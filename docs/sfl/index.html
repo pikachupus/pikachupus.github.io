@@ -145,14 +145,24 @@ const hora = (t) => new Date(t).toLocaleString("pt-BR", { timeZone: "America/Sao
 const cor = (n) => getComputedStyle(document.body).getPropertyValue(n).trim();
 const cache = (p) => fetch(p + "?v=" + Math.floor(Date.now() / 6e4)).then((r) => r.ok ? r.json() : null).catch(() => null);
 // GeckoTerminal: 30 consultas/min por pessoa; se recusar (429), espera e tenta de novo
-async function gt(caminho) {
-  for (let t = 0; t < 3; t++) {
-    const r = await fetch("https://api.geckoterminal.com/api/v2" + caminho, { headers: { accept: "application/json" } });
-    if (r.ok) return r.json();
-    if (r.status !== 429) throw new Error("HTTP " + r.status);
-    await new Promise((ok) => setTimeout(ok, 4000 * (t + 1)));
-  }
-  throw new Error("limite de consultas");
+// (quando recusa, a resposta vem sem CORS e o navegador acusa erro de rede: trata igual a 429)
+let filaGt = Promise.resolve(), ultimaGt = 0;
+function gt(caminho) {
+  const tarefa = filaGt.then(async () => {
+    for (let t = 0; t < 3; t++) {
+      const espera = ultimaGt + 1500 - Date.now(); // espaça as consultas (~40/min no máximo)
+      if (espera > 0) await new Promise((ok) => setTimeout(ok, espera));
+      ultimaGt = Date.now();
+      let r = null;
+      try { r = await fetch("https://api.geckoterminal.com/api/v2" + caminho, { headers: { accept: "application/json" } }); } catch {}
+      if (r?.ok) return r.json();
+      if (r && r.status !== 429 && r.status < 500) throw new Error("HTTP " + r.status);
+      await new Promise((ok) => setTimeout(ok, 5000 * (t + 1)));
+    }
+    throw new Error("limite de consultas");
+  });
+  filaGt = tarefa.catch(() => {});
+  return tarefa;
 }
 const ultimoPreco = (r) => { let m = null; for (const x of TRADES.values()) if (x.rede === r && (!m || x.t > m.t)) m = x; return m ? m.u / m.f : null; };
 
