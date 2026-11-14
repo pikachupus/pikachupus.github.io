@@ -180,7 +180,7 @@ async function iniciar() {
   }
   for (const [id, sel, k] of [["redes", "rede"], ["janelas", "janela"], ["abas", "aba"]]) {
     document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => {
-      if (sel === "rede") rede = b.dataset.v; else if (sel === "janela") janela = Number(b.dataset.v); else aba = b.dataset.v;
+      if (sel === "rede") { rede = b.dataset.v; redeGrafico = null; } else if (sel === "janela") janela = Number(b.dataset.v); else aba = b.dataset.v;
       ls.set("sfl_t_" + sel, b.dataset.v); ordem = { col: aba === "tape" ? "t" : "vol", dir: -1 };
       if (sel !== "aba") montarGrafico();
       desenhar();
@@ -254,23 +254,44 @@ function fazendaHtml(w) {
   return `<a href="https://opensea.io/assets/matic/0x2b4a66557a79263275826ad31a4cddc2789334bd/${nft}" target="_blank" rel="noopener">#${nft}</a> <b>${nome || ""}</b>${pill}`;
 }
 function carteiraHtml(w) { return `<span class="cart" title="${w}" onclick="filtrar('${w}')">${curta(w)}</span> <a class="faint" href="https://opensea.io/${w}" target="_blank" rel="noopener" title="ver na OpenSea">↗</a>`; }
-function filtrar(w) { filtroCarteira = filtroCarteira === w ? null : w; desenhar(); }
+// Farm ID (id da fazenda no jogo; sem ele, o NFT) e Player (nome), clicável para ver só ele
+function farmIdHtml(w) {
+  const c = CART[w];
+  if (!c) return '<span class="faint">—</span>';
+  return `<a href="https://opensea.io/assets/matic/0x2b4a66557a79263275826ad31a4cddc2789334bd/${c[0]}" target="_blank" rel="noopener" title="NFT #${c[0]} na OpenSea">${c[2] || c[0]}</a>`;
+}
+function playerHtml(w) {
+  const c = CART[w];
+  if (!c) return `<span class="cart faint" onclick="filtrar('${w}')" title="carteira sem fazenda identificada">sem fazenda</span>`;
+  const [, nome, , banida, st] = c;
+  const pill = banida || st === "permanent" || st === "lock" ? ' <span class="pill down">banida</span>' : st === "investigating" ? ' <span class="pill warn">em análise</span>' : "";
+  return `<span class="cart" onclick="filtrar('${w}')" title="ver tudo que ele comprou e vendeu"><b>${nome || "NFT #" + c[0]}</b></span>${pill}`;
+}
+function filtrar(w) {
+  filtroCarteira = filtroCarteira === w ? null : w;
+  if (filtroCarteira && rede === "todas") {
+    // mostra no gráfico a rede onde ele mais negocia
+    const n = { base: 0, ronin: 0 }; for (const x of TRADES.values()) if (x.w === w) n[x.rede]++;
+    redeGrafico = n.ronin > n.base ? "ronin" : "base";
+  } else redeGrafico = null;
+  desenhar(); montarGrafico();
+}
 function ordenar(c) { ordem = { col: c, dir: ordem.col === c ? -ordem.dir : -1 }; desenhar(); }
 function cab(cols) { return "<thead><tr>" + cols.map(([c, t, cl]) => `<th class="${cl || ""}" onclick="ordenar('${c}')">${t}${ordem.col === c ? (ordem.dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("") + "</tr></thead>"; }
 const ord = (L) => L.sort((a, b) => { const x = a[ordem.col], y = b[ordem.col]; return (x == null) - (y == null) || (typeof x === "string" ? String(x).localeCompare(y) : x - y) * ordem.dir; });
 
 function desenhar() {
   for (const [id, v] of [["redes", rede], ["janelas", String(janela)], ["abas", aba]]) document.querySelectorAll(`#${id} button`).forEach((b) => b.classList.toggle("on", b.dataset.v === v));
-  document.getElementById("filtro").innerHTML = filtroCarteira ? `<span class="chip" onclick="filtrar('${filtroCarteira}')">carteira ${curta(filtroCarteira)} ✕</span>` : "";
+  document.getElementById("filtro").innerHTML = filtroCarteira ? `<span class="chip" onclick="filtrar('${filtroCarteira}')">${CART[filtroCarteira]?.[1] ? "player " + CART[filtroCarteira][1] : "carteira " + curta(filtroCarteira)} ✕</span>` : "";
   desenharKpis();
   const L = filtrados(), el = document.getElementById("tabela"), info = document.getElementById("info");
   if (aba === "tape") {
-    const linhas = ord(L.map((x) => ({ ...x, preco: x.u / x.f }))).slice(0, 800);
+    const linhas = ord(L.map((x) => ({ ...x, preco: x.u / x.f, fid: CART[x.w] ? Number(CART[x.w][2] || CART[x.w][0]) : null, player: CART[x.w]?.[1] ?? null }))).slice(0, 800);
     info.textContent = `${num(L.length)} negociações · mostrando as ${num(linhas.length)} ${ordem.col === "t" ? "mais recentes" : "primeiras"} · clique numa carteira para filtrar`;
-    el.innerHTML = cab([["t", "Quando"], ["k", "Tipo"], ["preco", "Preço", "r"], ["f", "FLOWER", "r"], ["u", "US$", "r"], ["u", "R$", "r"], ["w", "Carteira"], ["nft", "Fazenda"], ["rede", "Rede"]]) + "<tbody>" +
+    el.innerHTML = cab([["t", "Quando"], ["k", "Tipo"], ["preco", "Preço", "r"], ["f", "FLOWER", "r"], ["u", "US$", "r"], ["u", "R$", "r"], ["w", "Carteira"], ["fid", "Farm ID"], ["player", "Player"], ["rede", "Rede"]]) + "<tbody>" +
       (linhas.map((x) => `<tr class="${x.vivo && !idsVistos.has(x.id) ? "novo" : ""}"><td title="${hora(x.t)}">${hora(x.t)} <span class="faint">${quando(x.t)}</span></td>
         <td><span class="pill ${x.k ? "up" : "down"}">${x.k ? "Compra" : "Venda"}</span></td><td class=r>${v$(x.preco, 4)}</td><td class=r>${num(x.f, 2)}</td>
-        <td class="r ${x.k ? "up" : "down"}"><b>${v$(x.u)}</b></td><td class="r muted">${vR(x.u)}</td><td>${carteiraHtml(x.w)}</td><td>${fazendaHtml(x.w)}</td>
+        <td class="r ${x.k ? "up" : "down"}"><b>${v$(x.u)}</b></td><td class="r muted">${vR(x.u)}</td><td>${carteiraHtml(x.w)}</td><td>${farmIdHtml(x.w)}</td><td>${playerHtml(x.w)}</td>
         <td><span class="rede">${ROTULO[x.rede]}</span>${x.tx ? ` <a class="faint" href="${x.rede === "base" ? "https://basescan.org/tx/" : "https://app.roninchain.com/tx/"}${x.tx}" target="_blank" rel="noopener" title="ver transação">↗</a>` : ""}</td></tr>`).join("") || '<tr><td colspan="9" class="empty">Nenhuma negociação nesse período.</td></tr>') + "</tbody>";
     linhas.forEach((x) => idsVistos.add(x.id));
     return;
@@ -294,12 +315,14 @@ function desenhar() {
       <td class=r>${num(g.n)}</td><td class="faint">${quando(g.ult)}</td></tr>`).join("") || '<tr><td colspan="9" class="empty">Nada nesse período.</td></tr>') + "</tbody>";
 }
 
-let chart = null;
+let chart = null, redeGrafico = null;
 async function montarGrafico() {
-  const r = rede === "todas" ? "base" : rede, pool = POOLS.find((p) => p.rede === r)?.pool, el = document.getElementById("grafico");
+  const r = redeGrafico || (rede === "todas" ? "base" : rede), pool = POOLS.find((p) => p.rede === r)?.pool, el = document.getElementById("grafico");
   const [tf, agg, lim, nome] = janela === 1 ? ["minute", 15, 96, "velas de 15 min"] : janela === 7 ? ["hour", 1, 168, "velas de 1 hora"] : ["hour", 4, 180, "velas de 4 horas"];
-  document.getElementById("g-titulo").textContent = `Preço do FLOWER na ${ROTULO[r]}`;
-  document.getElementById("g-nota").textContent = `${nome} · US$` + (rede === "todas" ? " · gráfico da Base (pool principal)" : "");
+  const seg = (tf === "minute" ? 60 : 3600) * agg;
+  const quem = filtroCarteira ? (CART[filtroCarteira]?.[1] || (CART[filtroCarteira] ? "NFT #" + CART[filtroCarteira][0] : curta(filtroCarteira))) : null;
+  document.getElementById("g-titulo").textContent = quem ? `${quem} no FLOWER (${ROTULO[r]})` : `Preço do FLOWER na ${ROTULO[r]}`;
+  document.getElementById("g-nota").textContent = `${nome} · US$` + (quem ? " · ▲ compras e ▼ vendas dele marcadas nas velas" : rede === "todas" ? " · gráfico da Base (pool principal)" : "");
   try {
     const j = await gt(`/networks/${r}/pools/${pool}/ohlcv/${tf}?aggregate=${agg}&limit=${lim}&currency=usd`);
     const l = (j.data?.attributes?.ohlcv_list || []).slice().reverse();
@@ -315,6 +338,21 @@ async function montarGrafico() {
     });
     const velas = chart.addCandlestickSeries({ upColor: cor("--up"), downColor: cor("--down"), borderVisible: false, wickUpColor: cor("--up"), wickDownColor: cor("--down"), priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
     velas.setData(l.map(([t, o, h, lo, c]) => ({ time: t, open: o, high: h, low: lo, close: c })));
+    if (filtroCarteira && l.length) {
+      // agrupa as negociações do player por vela (compras e vendas separadas)
+      const ini = l[0][0], fim = l[l.length - 1][0] + seg, grupos = new Map();
+      for (const x of TRADES.values()) {
+        if (x.w !== filtroCarteira || x.rede !== r) continue;
+        const s = Math.floor(x.t / 1000 / seg) * seg;
+        if (s < ini || s >= fim) continue;
+        const g = grupos.get(s + ":" + x.k) || { time: s, k: x.k, f: 0, u: 0 };
+        g.f += x.f; g.u += x.u; grupos.set(s + ":" + x.k, g);
+      }
+      velas.setMarkers([...grupos.values()].sort((a, b) => a.time - b.time || a.k - b.k).map((g) => ({
+        time: g.time, position: g.k ? "belowBar" : "aboveBar", color: cor(g.k ? "--up" : "--down"), shape: g.k ? "arrowUp" : "arrowDown",
+        text: `${g.k ? "C" : "V"} ${comp(g.f)} · $${comp(g.u)}`,
+      })));
+    }
     const vol = chart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "vol" });
     chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
     vol.setData(l.map(([t, o, , , c, v]) => ({ time: t, value: v, color: c >= o ? cor("--up-soft") : cor("--down-soft") })));
