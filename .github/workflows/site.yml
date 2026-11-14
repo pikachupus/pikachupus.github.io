@@ -1,0 +1,107 @@
+name: Atualizar site
+
+# De hora em hora: banidas (só faz algo quando sai o arquivo diário), preços do market e fazendas à venda.
+# O site é publicado direto no GitHub Pages; no repositório só entra o histórico (no máximo 1x por dia),
+# para ele não crescer à toa. Se uma parte falhar, as outras publicam mesmo assim e a rodada fica
+# marcada com erro no final (o GitHub avisa por e-mail).
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: repositorio
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    environment:
+      name: github-pages
+      url: ${{ steps.publicar.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Recuperar dados da rodada anterior
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            estado/venda.json.gz
+            docs/data/precos/agora.json
+            docs/data/precos/cotacoes.json
+            docs/data/venda/fazendas.json
+          key: vivo-${{ github.run_id }}
+          restore-keys: vivo-
+
+      - name: Banidas
+        id: banidas
+        continue-on-error: true
+        run: node coletar.mjs
+        env:
+          SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
+
+      - name: Precos do market
+        id: precos
+        continue-on-error: true
+        run: node precos.mjs
+        env:
+          SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
+
+      - name: Fazendas a venda
+        id: venda
+        continue-on-error: true
+        run: node venda.mjs
+        env:
+          SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
+          OPENSEA_API_KEY: ${{ secrets.OPENSEA_API_KEY }}
+
+      - name: Guardar dados para a proxima rodada
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            estado/venda.json.gz
+            docs/data/precos/agora.json
+            docs/data/precos/cotacoes.json
+            docs/data/venda/fazendas.json
+          key: vivo-${{ github.run_id }}
+
+      - name: Salvar o historico no repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # dados "ao vivo" não ficam no repositório (vão só para o site)
+          git rm -r -q --cached --ignore-unmatch docs/data/precos/agora.json docs/data/precos/flower.json docs/data/precos/cotacoes.json docs/data/venda
+          for p in docs/data/dias.json docs/data/novas estado/ultimo.json.gz estado/precos estado/precos-cotacoes.json docs/data/precos/mes .gitignore; do
+            if [ -e "$p" ]; then git add "$p"; fi
+          done
+          # cache das fazendas: só no dia em que o arquivo do jogo foi relido
+          if [ -n "$(git status --porcelain estado/venda-dia.txt)" ]; then git add estado/venda-dia.txt estado/venda.json.gz; fi
+          git diff --cached --quiet && exit 0
+          git commit -m "historico $(date -u +%F\ %H:%M)"
+          git pull --rebase
+          git push
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - name: Publicar o site
+        id: publicar
+        uses: actions/deploy-pages@v4
+
+      - name: Conferir se alguma parte falhou
+        if: steps.banidas.outcome == 'failure' || steps.precos.outcome == 'failure' || steps.venda.outcome == 'failure'
+        run: |
+          echo "banidas: ${{ steps.banidas.outcome }} | precos: ${{ steps.precos.outcome }} | fazendas: ${{ steps.venda.outcome }}"
+          exit 1
