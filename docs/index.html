@@ -34,6 +34,8 @@
   .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 9px; cursor: pointer; }
   .seg button:hover { color: var(--text); }
   .seg button.on { background: var(--sel); color: var(--sel-text); }
+  nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 13px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); }
+  nav a:hover { color: var(--text); }
   .icon-btn { border: 1px solid var(--line); background: var(--card); color: var(--muted); width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-size: 16px; box-shadow: var(--shadow); }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); min-width: 0; }
   .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -96,6 +98,7 @@
       <div class="sub" id="atualizado">carregando…</div>
     </div>
     <div class="spacer"></div>
+    <nav><a href="precos.html">📈 Preços</a></nav>
     <div class="seg" id="periodos">
       <button data-p="7">7 dias</button><button data-p="14">14 dias</button><button data-p="30">30 dias</button>
       <button data-p="2026">2026</button><button data-p="tudo">Tudo</button>
