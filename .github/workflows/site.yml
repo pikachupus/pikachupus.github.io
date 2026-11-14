@@ -37,9 +37,14 @@ jobs:
         with:
           path: |
             estado/venda.json.gz
+            estado/sfl-trades.json.gz
+            estado/sfl-carteiras.json
+            estado/sfl-fazendas.json
             docs/data/precos/agora.json
             docs/data/precos/cotacoes.json
             docs/data/venda/fazendas.json
+            docs/data/sfl/trades.json
+            docs/data/sfl/carteiras.json
           key: vivo-${{ github.run_id }}
           restore-keys: vivo-
 
@@ -65,15 +70,29 @@ jobs:
           SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
           OPENSEA_API_KEY: ${{ secrets.OPENSEA_API_KEY }}
 
+      - name: Terminal SFL
+        id: sfl
+        continue-on-error: true
+        run: node sfl.mjs
+        env:
+          SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
+          OPENSEA_API_KEY: ${{ secrets.OPENSEA_API_KEY }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+
       - name: Guardar dados para a proxima rodada
         if: always()
         uses: actions/cache/save@v4
         with:
           path: |
             estado/venda.json.gz
+            estado/sfl-trades.json.gz
+            estado/sfl-carteiras.json
+            estado/sfl-fazendas.json
             docs/data/precos/agora.json
             docs/data/precos/cotacoes.json
             docs/data/venda/fazendas.json
+            docs/data/sfl/trades.json
+            docs/data/sfl/carteiras.json
           key: vivo-${{ github.run_id }}
 
       - name: Salvar o historico no repositorio
@@ -81,12 +100,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # dados "ao vivo" não ficam no repositório (vão só para o site)
-          git rm -r -q --cached --ignore-unmatch docs/data/precos/agora.json docs/data/precos/flower.json docs/data/precos/cotacoes.json docs/data/venda
+          git rm -r -q --cached --ignore-unmatch docs/data/precos/agora.json docs/data/precos/flower.json docs/data/precos/cotacoes.json docs/data/venda docs/data/sfl
           for p in docs/data/dias.json docs/data/novas estado/ultimo.json.gz estado/precos estado/precos-cotacoes.json docs/data/precos/mes .gitignore; do
             if [ -e "$p" ]; then git add "$p"; fi
           done
-          # cache das fazendas: só no dia em que o arquivo do jogo foi relido
-          if [ -n "$(git status --porcelain estado/venda-dia.txt)" ]; then git add estado/venda-dia.txt estado/venda.json.gz; fi
+          # caches das fazendas e do terminal: só 1x por dia (no dia em que o arquivo do jogo foi relido)
+          if [ -n "$(git status --porcelain estado/venda-dia.txt)" ]; then
+            for p in estado/venda-dia.txt estado/venda.json.gz estado/sfl-trades.json.gz estado/sfl-carteiras.json estado/sfl-fazendas.json; do
+              if [ -e "$p" ]; then git add "$p"; fi
+            done
+          fi
           git diff --cached --quiet && exit 0
           git commit -m "historico $(date -u +%F\ %H:%M)"
           git pull --rebase
@@ -101,7 +124,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Conferir se alguma parte falhou
-        if: steps.banidas.outcome == 'failure' || steps.precos.outcome == 'failure' || steps.venda.outcome == 'failure'
+        if: steps.banidas.outcome == 'failure' || steps.precos.outcome == 'failure' || steps.venda.outcome == 'failure' || steps.sfl.outcome == 'failure'
         run: |
-          echo "banidas: ${{ steps.banidas.outcome }} | precos: ${{ steps.precos.outcome }} | fazendas: ${{ steps.venda.outcome }}"
+          echo "banidas: ${{ steps.banidas.outcome }} | precos: ${{ steps.precos.outcome }} | fazendas: ${{ steps.venda.outcome }} | terminal: ${{ steps.sfl.outcome }}"
           exit 1
