@@ -103,7 +103,7 @@
       <div class="spacer"></div>
       <div class="seg" id="janelas"><button data-j="7">7D</button><button data-j="30">30D</button><button data-j="90">90D</button><button data-j="9999">Tudo</button></div>
     </div>
-    <div class="legend"><span><i style="background:var(--s1)"></i>Anúncio mais barato (floor)</span><span><i style="background:var(--s2)"></i>Maior oferta</span><span class="faint" id="d-info"></span></div>
+    <div class="legend"><span><i style="background:var(--s1)"></i>Preço (anúncio mais barato; sem anúncio, última venda)</span><span><i style="background:var(--s2)"></i>Maior oferta</span><span class="faint" id="d-info"></span></div>
     <div class="chart" id="ch-preco"><div class="tip" id="tip"></div></div>
     <div class="legend"><span><i style="background:var(--vol);height:8px"></i>Volume do dia (FLOWER)</span></div>
     <div class="chart" id="ch-vol"></div>
@@ -122,7 +122,7 @@
     <b>De onde vêm os dados.</b> Do próprio jogo: o relatório diário do market (Community API) traz, para cada item, o anúncio mais barato, a maior oferta, a última venda, o volume e as negociações.
     O histórico começa em dezembro de 2025, quando o jogo passou a guardar esse relatório. O dia do jogo vira às 21h de Brasília.<br />
     <b>Preço</b> = anúncio mais barato (floor); sem anúncio, a última venda. <b>Maior oferta</b> = quanto alguém paga agora (venda imediata).
-    Os valores são por unidade, em FLOWER; US$ e R$ usam a cotação atual do FLOWER (o histórico em dólar começa a ser guardado agora).
+    Os valores são por unidade, em FLOWER. Em US$ e R$, cada dia do gráfico usa a cotação do FLOWER daquele dia (CoinGecko); a tabela e o ponto de hoje usam a cotação atual do jogo. Atualiza de hora em hora.
   </div>
 </div>
 
@@ -133,7 +133,7 @@ const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch
 let tema = ls.get("sfl_ban_tema", "dark"); document.body.classList.toggle("light", tema === "light");
 function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.body.classList.toggle("light", tema === "light"); ls.set("sfl_ban_tema", tema); if (atual) desenharDetalhe(); desenharTabela(); }
 
-let AGORA = null, USD_BRL = null, moeda = ls.get("sfl_precos_moeda", "flower"), cat = ls.get("sfl_precos_cat", "crops"), janela = Number(ls.get("sfl_precos_janela", "30"));
+let AGORA = null, COT = {}, moeda = ls.get("sfl_precos_moeda", "flower"), cat = ls.get("sfl_precos_cat", "crops"), janela = Number(ls.get("sfl_precos_janela", "30"));
 let ordem = { col: "v7", dir: -1 }, atual = null, serieAtual = null;
 const cache = {};
 const dados = (p) => (cache[p] ||= fetch("../data/precos/" + p + "?v=" + Math.floor(Date.now() / 3e5)).then((r) => { if (!r.ok) throw new Error(p + ": HTTP " + r.status); return r.json(); }));
@@ -141,22 +141,28 @@ const cor = (n) => getComputedStyle(document.body).getPropertyValue(n).trim();
 const diaBR = (d) => d.split("-").reverse().join("/");
 const diaCurto = (d) => d.slice(8, 10) + "/" + d.slice(5, 7);
 
-function fator() { return moeda === "flower" ? 1 : moeda === "usd" ? AGORA.flower : AGORA.flower * (USD_BRL || NaN); }
+// Quanto vale 1 FLOWER na moeda escolhida: no dia `dia` (cotação daquele dia) ou agora (sem dia).
+function fator(dia) {
+  if (moeda === "flower") return 1;
+  const c = dia && dia !== AGORA.dia ? COT[dia] : null;
+  if (moeda === "usd") return c?.[0] ?? AGORA.flower;
+  return c?.[1] ?? AGORA.flower_brl ?? NaN;
+}
 function casas(v) { const a = Math.abs(v); return a >= 1000 ? 0 : a >= 10 ? 2 : a >= 1 ? 3 : a >= 0.1 ? 4 : a >= 0.001 ? 5 : 7; }
-function preco(v, semMoeda) {
+function preco(v, dia) {
   if (v == null || isNaN(v)) return "—";
-  const x = v * fator(), c = casas(x);
+  const x = v * fator(dia), c = casas(x);
   const s = x.toLocaleString("pt-BR", { minimumFractionDigits: Math.min(c, 2), maximumFractionDigits: c });
-  return semMoeda ? s : moeda === "usd" ? "US$ " + s : moeda === "brl" ? "R$ " + s : s;
+  return moeda === "usd" ? "US$ " + s : moeda === "brl" ? "R$ " + s : s;
 }
 const inteiro = (v) => v == null ? "—" : Math.round(v).toLocaleString("pt-BR");
-const compacto = (v) => v == null ? "—" : Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(v * fator());
+const compacto = (v, dia) => v == null ? "—" : Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(v * fator(dia));
 const varHtml = (v) => v == null ? '<span class="faint">—</span>' : `<span class="${v >= 0 ? "up" : "down"}">${v >= 0 ? "▲ +" : "▼ "}${v.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span>`;
 
 async function iniciar() {
   try {
     AGORA = await dados("agora.json");
-    fetch("https://open.er-api.com/v6/latest/USD").then((r) => r.json()).then((j) => { USD_BRL = j?.rates?.BRL || null; desenharTudo(); }).catch(() => {});
+    try { for (const [d, usd, brl] of await dados("cotacoes.json")) COT[d] = [usd, brl]; } catch {}
     const t = new Date(AGORA.atualizado_em);
     document.getElementById("atualizado").textContent = `Atualizado ${t.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} (Brasília) · histórico desde ${diaBR(AGORA.primeiro_dia)}`;
     document.getElementById("cats").innerHTML = CATS.map(([k, t]) => `<button data-c="${k}">${t}</button>`).join("");
@@ -172,9 +178,11 @@ async function iniciar() {
 
 function desenharTudo() {
   document.querySelectorAll("#moedas button").forEach((b) => b.classList.toggle("on", b.dataset.m === moeda));
-  const fl = AGORA.flower;
-  document.getElementById("k-flower").textContent = moeda === "brl" && USD_BRL ? "R$ " + (fl * USD_BRL).toLocaleString("pt-BR", { maximumFractionDigits: 4 }) : "US$ " + fl.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
-  document.getElementById("k-flower-f").textContent = USD_BRL ? `R$ ${(fl * USD_BRL).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} · cotação do jogo` : "cotação do jogo";
+  const fl = AGORA.flower, flb = AGORA.flower_brl, n4 = (v) => v.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+  const dAnt = Object.keys(COT).sort().filter((d) => d < AGORA.dia).pop(), ant = dAnt ? COT[dAnt][0] : null;
+  document.getElementById("k-flower").textContent = moeda === "brl" && flb ? "R$ " + n4(flb) : "US$ " + n4(fl);
+  document.getElementById("k-flower-f").innerHTML = (moeda === "brl" ? `US$ ${n4(fl)}` : flb ? `R$ ${n4(flb)}` : "cotação do jogo") +
+    (ant ? ` · ${varHtml((fl / ant - 1) * 100)} 24h` : "");
   document.getElementById("k-vol").textContent = compacto(AGORA.volume_hoje) + (moeda === "flower" ? " FLOWER" : "");
   document.getElementById("k-trades").textContent = inteiro(AGORA.trades_hoje);
   const ativos = AGORA.itens.filter((i) => i.t1 > 0).length;
@@ -227,8 +235,8 @@ async function abrir(k) {
   const arquivos = await Promise.all(meses.map((m) => dados(`mes/${m}/${atual.c}.json`).catch(() => null)));
   if (!atual || atual.k !== pedido) return;
   const serie = [];
-  for (const a of arquivos) { if (!a) continue; const s = a.itens[k]; if (!s) continue; a.dias.forEach((d, j) => { if (s[j]) serie.push({ d, f: s[j][0], o: s[j][1], s: s[j][2], v: s[j][3], t: s[j][4] }); }); }
-  serie.push({ d: AGORA.dia, f: atual.f, o: atual.o, s: atual.s, v: atual.v1, t: atual.t1, hoje: true });
+  for (const a of arquivos) { if (!a) continue; const s = a.itens[k]; if (!s) continue; a.dias.forEach((d, j) => { if (s[j]) serie.push({ d, f: s[j][0], o: s[j][1], s: s[j][2], v: s[j][3], t: s[j][4], p: s[j][0] ?? s[j][2] }); }); }
+  serie.push({ d: AGORA.dia, f: atual.f, o: atual.o, s: atual.s, v: atual.v1, t: atual.t1, p: atual.p, hoje: true });
   serieAtual = serie;
   desenharDetalhe();
 }
@@ -254,7 +262,7 @@ function graficoPreco(s) {
   const el = document.getElementById("ch-preco"), tip = document.getElementById("tip");
   el.querySelector("svg")?.remove();
   const W = el.clientWidth || 800, H = 280, m = { t: 12, r: 12, b: 26, l: 64 }, w = W - m.l - m.r, h = H - m.t - m.b;
-  const F = fator(), vals = s.flatMap((p) => [p.f, p.o].filter((v) => v != null).map((v) => v * F));
+  const F = (p) => fator(p.d), vals = s.flatMap((p) => [p.p, p.o].filter((v) => v != null).map((v) => v * F(p))).filter((v) => !isNaN(v));
   if (!vals.length) { el.insertAdjacentHTML("afterbegin", `<svg viewBox="0 0 ${W} 80"><text x="${W / 2}" y="40" text-anchor="middle" fill="${cor("--muted")}">Sem preço no período</text></svg>`); return; }
   const e = escala(Math.min(...vals), Math.max(...vals));
   const x = (i) => m.l + (s.length === 1 ? w / 2 : i / (s.length - 1) * w), y = (v) => m.t + h - (v - e.ini) / (e.fim - e.ini) * h;
@@ -262,10 +270,10 @@ function graficoPreco(s) {
   for (let v = e.ini; v <= e.fim + e.passo / 2; v += e.passo) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${cor("--line")}" ${v > e.ini ? 'stroke-dasharray="3 4"' : ""}/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end" fill="${cor("--faint")}">${(v).toLocaleString("pt-BR", { maximumFractionDigits: casas(e.passo) })}</text>`;
   const cada = Math.max(1, Math.ceil(s.length / Math.max(2, Math.floor(w / 70))));
   s.forEach((p, i) => { if ((s.length - 1 - i) % cada === 0) g += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" fill="${cor("--faint")}">${diaCurto(p.d)}</text>`; });
-  const linha = (campo, c) => { let d = "", on = false; s.forEach((p, i) => { if (p[campo] == null) { on = false; return; } d += (on ? "L" : "M") + x(i).toFixed(1) + "," + y(p[campo] * F).toFixed(1); on = true; }); return `<path d="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`; };
-  g += linha("o", cor("--s2")) + linha("f", cor("--s1"));
+  const linha = (campo, c) => { let d = "", on = false; s.forEach((p, i) => { if (p[campo] == null) { on = false; return; } const v = p[campo] * F(p); if (isNaN(v)) { on = false; return; } d += (on ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); on = true; }); return `<path d="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`; };
+  g += linha("o", cor("--s2")) + linha("p", cor("--s1"));
   const ult = s.length - 1;
-  for (const [campo, c] of [["f", "--s1"], ["o", "--s2"]]) if (s[ult][campo] != null) g += `<circle cx="${x(ult)}" cy="${y(s[ult][campo] * F)}" r="4" fill="${cor(c)}" stroke="${cor("--card")}" stroke-width="2"/>`;
+  for (const [campo, c] of [["p", "--s1"], ["o", "--s2"]]) if (s[ult][campo] != null) g += `<circle cx="${x(ult)}" cy="${y(s[ult][campo] * F(s[ult]))}" r="4" fill="${cor(c)}" stroke="${cor("--card")}" stroke-width="2"/>`;
   g += `<line id="cruz" x1="0" x2="0" y1="${m.t}" y2="${m.t + h}" stroke="${cor("--muted")}" stroke-dasharray="2 3" opacity="0"/><rect x="${m.l}" y="${m.t}" width="${w}" height="${h}" fill="transparent" id="area"/>`;
   el.insertAdjacentHTML("afterbegin", g + "</svg>");
   const svg = el.querySelector("svg"), area = svg.querySelector("#area"), cruz = svg.querySelector("#cruz");
@@ -273,7 +281,7 @@ function graficoPreco(s) {
     const b = svg.getBoundingClientRect(), px = (ev.clientX - b.left) / b.width * W;
     const i = Math.max(0, Math.min(s.length - 1, Math.round((px - m.l) / (w || 1) * (s.length - 1)))), p = s[i];
     cruz.setAttribute("x1", x(i)); cruz.setAttribute("x2", x(i)); cruz.setAttribute("opacity", 1);
-    tip.innerHTML = `<b>${diaBR(p.d)}${p.hoje ? " (hoje)" : ""}</b><br>Floor: ${preco(p.f)}<br>Maior oferta: ${preco(p.o)}<br>Última venda: ${preco(p.s)}<br>Volume: ${compacto(p.v)} · ${inteiro(p.t)} negociações`;
+    tip.innerHTML = `<b>${diaBR(p.d)}${p.hoje ? " (hoje)" : ""}</b><br>Floor: ${preco(p.f, p.d)}<br>Maior oferta: ${preco(p.o, p.d)}<br>Última venda: ${preco(p.s, p.d)}<br>Volume: ${compacto(p.v, p.d)} · ${inteiro(p.t)} negociações${moeda !== "flower" && COT[p.d] ? `<br><span style="opacity:.7">1 FLOWER = ${moeda === "usd" ? "US$ " + COT[p.d][0] : "R$ " + COT[p.d][1]}</span>` : ""}`;
     tip.style.opacity = 1; const lx = x(i) / W * b.width; tip.style.left = (lx > b.width - 200 ? lx - 190 : lx + 12) + "px"; tip.style.top = "10px";
   };
   area.onmouseleave = () => { tip.style.opacity = 0; cruz.setAttribute("opacity", 0); };
@@ -282,9 +290,9 @@ function graficoVolume(s) {
   const el = document.getElementById("ch-vol");
   el.innerHTML = "";
   const W = el.clientWidth || 800, H = 90, m = { t: 6, r: 12, b: 4, l: 64 }, w = W - m.l - m.r, h = H - m.t - m.b;
-  const F = fator(), max = Math.max(...s.map((p) => (p.v || 0) * F)) || 1, slot = w / s.length, bw = Math.max(1, Math.min(16, slot - 2));
+  const F = (p) => fator(p.d) || 0, max = Math.max(...s.map((p) => (p.v || 0) * F(p))) || 1, slot = w / s.length, bw = Math.max(1, Math.min(16, slot - 2));
   let g = `<svg viewBox="0 0 ${W} ${H}" height="${H}" font-family="Inter, sans-serif" font-size="11"><text x="${m.l - 8}" y="${m.t + 10}" text-anchor="end" fill="${cor("--faint")}">${Intl.NumberFormat("pt-BR", { notation: "compact" }).format(max)}</text>`;
-  s.forEach((p, i) => { if (!p.v) return; const bh = Math.max(1, p.v * F / max * h), cx = s.length === 1 ? m.l + w / 2 : m.l + i / (s.length - 1) * w; g += `<rect x="${cx - bw / 2}" y="${m.t + h - bh}" width="${bw}" height="${bh}" rx="${Math.min(2, bw / 2)}" fill="${cor("--vol")}"/>`; });
+  s.forEach((p, i) => { if (!p.v) return; const bh = Math.max(1, p.v * F(p) / max * h), cx = s.length === 1 ? m.l + w / 2 : m.l + i / (s.length - 1) * w; g += `<rect x="${cx - bw / 2}" y="${m.t + h - bh}" width="${bw}" height="${bh}" rx="${Math.min(2, bw / 2)}" fill="${cor("--vol")}"/>`; });
   el.innerHTML = g + `<line x1="${m.l}" x2="${W - m.r}" y1="${m.t + h}" y2="${m.t + h}" stroke="${cor("--line")}"/></svg>`;
 }
 let _l = 0; new ResizeObserver(() => { const l = document.body.clientWidth; if (l !== _l) { _l = l; if (serieAtual) desenharDetalhe(); } }).observe(document.body);
