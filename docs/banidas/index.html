@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sunflower Land - Fazendas Banidas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0d13; --bg2: #0f131b; --card: #131823; --card2: #181e2b; --line: #232b3a;
+    --text: #eef1f6; --muted: #8d97a8; --faint: #5d6778;
+    --ban: #f0505c; --ban-soft: rgba(240, 80, 92, .14); --unban: #2fc98a; --unban-soft: rgba(47, 201, 138, .14);
+    --amber: #f2b34a; --amber-soft: rgba(242, 179, 74, .14); --sel: #f6f7f9; --sel-text: #0a0d13;
+    --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.25);
+  }
+  body.light {
+    --bg: #f3f5f8; --bg2: #eef1f5; --card: #ffffff; --card2: #f7f8fa; --line: #e2e6ec;
+    --text: #141821; --muted: #5e6776; --faint: #8b94a3;
+    --ban: #d93644; --ban-soft: rgba(217, 54, 68, .10); --unban: #128a5c; --unban-soft: rgba(18, 138, 92, .10);
+    --amber: #b7790f; --amber-soft: rgba(183, 121, 15, .10); --sel: #141821; --sel-text: #fff;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 6px 18px rgba(16,24,40,.05);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 500px at 15% -10%, var(--ban-soft), transparent 60%), var(--bg); color: var(--text);
+    font-family: Inter, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; min-height: 100vh; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 18px; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--ban-soft); color: var(--ban); font-size: 22px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .spacer { flex: 1; }
+  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; gap: 2px; box-shadow: var(--shadow); flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 9px; cursor: pointer; }
+  .seg button:hover { color: var(--text); }
+  .seg button.on { background: var(--sel); color: var(--sel-text); }
+  nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 13px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); }
+  nav a:hover { color: var(--text); }
+  .icon-btn { border: 1px solid var(--line); background: var(--card); color: var(--muted); width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-size: 16px; box-shadow: var(--shadow); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+  .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .card-h h2 { margin: 0; font-size: 15px; font-weight: 700; }
+  .card-h .note { color: var(--muted); font-size: 12.5px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi { position: relative; overflow: hidden; }
+  .kpi .lab { color: var(--muted); font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .kpi .val { font-size: 30px; font-weight: 800; letter-spacing: -.03em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kpi .foot { color: var(--faint); font-size: 12px; margin-top: 4px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .kpi.ban .val { color: var(--ban); } .kpi.unban .val { color: var(--unban); }
+  .grid-main { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; }
+  @media (max-width: 980px) { .grid-main { grid-template-columns: 1fr; } }
+  #chart { position: relative; height: 290px; }
+  #chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .tip { position: absolute; pointer-events: none; background: var(--sel); color: var(--sel-text); padding: 8px 10px; border-radius: 8px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -110%); opacity: 0; transition: opacity .1s; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+  .tip b { font-size: 14px; }
+  .scroll { overflow: auto; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  th { text-align: left; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 10px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); white-space: nowrap; z-index: 1; }
+  th.sort { cursor: pointer; user-select: none; } th.sort:hover { color: var(--text); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--card2); }
+  .r { text-align: right; }
+  #t-dias th, #t-dias td { padding: 9px 6px; }
+  #t-dias th { font-size: 10.5px; letter-spacing: .02em; }
+  #t-dias th:first-child, #t-dias td:first-child { padding-left: 2px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .pill.ban { background: var(--ban-soft); color: var(--ban); }
+  .pill.unban { background: var(--unban-soft); color: var(--unban); }
+  .pill.amber { background: var(--amber-soft); color: var(--amber); }
+  .pill.mute { background: var(--card2); color: var(--muted); }
+  .num-ban { color: var(--ban); font-weight: 700; } .num-unban { color: var(--unban); font-weight: 700; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .stat { background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .stat .v { font-size: 22px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .stat .l { color: var(--muted); font-size: 12px; font-weight: 600; margin-top: 2px; }
+  .bar { height: 5px; border-radius: 3px; background: var(--line); margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--text); opacity: .75; border-radius: 3px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  select, input { background: var(--card2); border: 1px solid var(--line); color: var(--text); padding: 8px 11px; border-radius: 10px; font: inherit; font-size: 13px; }
+  input { width: 200px; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+  .about { color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+  .about b { color: var(--text); font-weight: 600; }
+  .err { color: var(--ban); }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">⛔</div>
+    <div>
+      <h1>Sunflower Land - Fazendas Banidas</h1>
+      <div class="sub" id="atualizado">carregando…</div>
+    </div>
+    <div class="spacer"></div>
+    <nav style="display:flex;gap:6px;flex-wrap:wrap"><a href="../">🏠 Início</a><a href="../prices/">📈 Preços</a><a href="../fazendas/">🏡 Fazendas</a><a href="../sfl/">💹 SFL</a></nav>
+    <div class="seg" id="periodos">
+      <button data-p="7">7 dias</button><button data-p="14">14 dias</button><button data-p="30">30 dias</button>
+      <button data-p="2026">2026</button><button data-p="tudo">Tudo</button>
+    </div>
+    <button class="icon-btn" title="Trocar tema" onclick="trocarTema()">◐</button>
+  </header>
+
+  <div class="kpis">
+    <div class="card kpi ban"><div class="lab"><span class="dot" style="background:var(--ban)"></span>Contas banidas</div><div class="val" id="k-ban">—</div><div class="foot" id="k-ban-f"></div></div>
+    <div class="card kpi unban"><div class="lab"><span class="dot" style="background:var(--unban)"></span>Contas desbanidas</div><div class="val" id="k-unban">—</div><div class="foot" id="k-unban-f"></div></div>
+    <div class="card kpi"><div class="lab">Fazendas ativas</div><div class="val" id="k-ativas">—</div><div class="foot">jogaram nos últimos 90 dias</div></div>
+    <div class="card kpi"><div class="lab">Banidas entre as ativas</div><div class="val" id="k-total">—</div><div class="foot" id="k-total-f"></div></div>
+  </div>
+
+  <div class="grid-main">
+    <div class="card">
+      <div class="card-h"><h2>Novos banimentos por dia</h2><span class="note" id="chart-note"></span></div>
+      <div id="chart"><div class="tip" id="tip"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Dias</h2></div>
+      <div class="scroll" style="max-height:290px">
+        <table id="t-dias"></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h2>Fazendas banidas</h2><span class="note" id="info-faz"></span>
+      <div class="tools">
+        <select id="dia" onchange="filtrar()"></select>
+        <input id="busca" placeholder="Buscar Farm ID ou nome" oninput="filtrar()" />
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="scroll" style="max-height:620px"><table id="t-faz"></table></div>
+  </div>
+
+  <div class="card about">
+    <b>De onde vêm os dados.</b> Todo dia o jogo publica um arquivo oficial com todas as fazendas que jogaram nos últimos 90 dias (sai por volta das 19h de Brasília).
+    Comparamos com o arquivo do dia anterior: <b>banida</b> = estava liberada ontem e apareceu banida hoje; <b>desbanida</b> = estava banida e voltou.
+    O jogo não informa a data exata nem o motivo do ban.<br />
+    <b>Captcha</b>: o teste anti-robô que o jogo mostra durante a partida; "falhou" e "ok" são quantas vezes a conta errou ou acertou.
+    <b>Verificação social</b>: conta comprovada pelo jogo como pessoa real. <b>VIP</b>: tinha VIP ativo no último save.
+    <b>Status</b>: "em análise" (o jogo ainda está investigando) ou "permanente".
+  </div>
+</div>
+
+<script>
+let tema = "dark"; try { tema = localStorage.getItem("sfl_ban_tema") || "dark"; } catch {}
+document.body.classList.toggle("light", tema === "light");
+function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.body.classList.toggle("light", tema === "light"); try { localStorage.setItem("sfl_ban_tema", tema); } catch {} desenharGrafico(); }
+
+const cache = {};
+async function dados(p) {
+  if (!cache[p]) cache[p] = fetch("../data/" + p + "?v=" + Math.floor(Date.now() / 3e5)).then((r) => { if (!r.ok) throw new Error(p + ": HTTP " + r.status); return r.json(); });
+  return cache[p];
+}
+const fmt = (v, c = 0) => v == null ? "—" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const pct = (a, b) => b ? (a / b * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%" : "—";
+const diaBR = (d) => d.split("-").reverse().join("/");
+const diaCurto = (d) => d.slice(8, 10) + "/" + d.slice(5, 7);
+const idade = (ms) => ms ? Math.round((Date.now() - ms) / 864e5) : null;
+const STATUS = { investigating: ["em análise", "amber"], permanent: ["permanente", "ban"], ok: ["ok", "mute"] };
+
+let todosDias = [], diasPeriodo = [], fazendas = [], ordem = { col: "dia", dir: -1 };
+let periodo = "7"; try { periodo = localStorage.getItem("sfl_ban_periodo") || "7"; } catch {}
+
+async function iniciar() {
+  try {
+    todosDias = (await dados("dias.json")).filter((d) => d.novas != null).sort((a, b) => b.dia.localeCompare(a.dia));
+    if (!todosDias.length) { document.getElementById("atualizado").textContent = "Nenhum dia coletado ainda."; return; }
+    const exp = todosDias[0].exportado_em ? new Date(todosDias[0].exportado_em) : null;
+    document.getElementById("atualizado").textContent = "Atualizado com o arquivo do jogo de " + diaBR(todosDias[0].dia) +
+      (exp ? " · " + exp.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }) + " (Brasília)" : "");
+    document.querySelectorAll("#periodos button").forEach((b) => b.onclick = () => escolherPeriodo(b.dataset.p));
+    escolherPeriodo(periodo);
+  } catch (e) { document.getElementById("atualizado").innerHTML = `<span class="err">Erro ao carregar: ${e.message}</span>`; }
+}
+
+function escolherPeriodo(p) {
+  periodo = p; try { localStorage.setItem("sfl_ban_periodo", p); } catch {}
+  document.querySelectorAll("#periodos button").forEach((b) => b.classList.toggle("on", b.dataset.p === p));
+  if (p === "tudo") diasPeriodo = todosDias.slice();
+  else if (p === "2026") diasPeriodo = todosDias.filter((d) => d.dia >= "2026-01-01");
+  else { const ini = new Date(Date.parse(todosDias[0].dia) - (Number(p) - 1) * 864e5).toISOString().slice(0, 10); diasPeriodo = todosDias.filter((d) => d.dia >= ini); }
+  const ult = diasPeriodo[0] || todosDias[0];
+  const ban = diasPeriodo.reduce((s, d) => s + (d.novas || 0), 0), unban = diasPeriodo.reduce((s, d) => s + (d.desbanidas || 0), 0);
+  const n = diasPeriodo.length;
+  document.getElementById("k-ban").textContent = fmt(ban);
+  document.getElementById("k-ban-f").textContent = n ? `média de ${fmt(ban / n)} por dia · ${n} dia(s)` : "";
+  document.getElementById("k-unban").textContent = fmt(unban);
+  document.getElementById("k-unban-f").textContent = n ? `média de ${fmt(unban / n)} por dia` : "";
+  document.getElementById("k-ativas").textContent = fmt(ult.total_ativas);
+  document.getElementById("k-total").textContent = fmt(ult.banidas_total);
+  document.getElementById("k-total-f").textContent = pct(ult.banidas_total, ult.total_ativas) + " das ativas em " + diaBR(ult.dia);
+  document.getElementById("chart-note").textContent = n < (Number(p) || 0) ? `coleta começou em ${diaBR(todosDias[todosDias.length - 1].dia)}` : "";
+  document.getElementById("t-dias").innerHTML = "<thead><tr><th>Dia</th><th class=r>Ativas</th><th class=r>Banidas</th><th class=r>Novos bans</th><th class=r>Desbans</th></tr></thead><tbody>" +
+    diasPeriodo.map((d) => `<tr><td title="${diaBR(d.dia)}">${diaCurto(d.dia)}</td><td class=r>${fmt(d.total_ativas)}</td><td class=r>${fmt(d.banidas_total)}</td><td class="r num-ban">${fmt(d.novas)}</td><td class="r num-unban">${fmt(d.desbanidas)}</td></tr>`).join("") + "</tbody>";
+  desenharGrafico();
+  const sel = document.getElementById("dia");
+  sel.innerHTML = `<option value="">Todos os dias do período</option>` + diasPeriodo.map((d) => `<option value="${d.dia}">${diaBR(d.dia)} · ${fmt(d.novas)} bans</option>`).join("");
+  carregarFazendas();
+}
+
+function desenharGrafico() {
+  const el = document.getElementById("chart"), tip = document.getElementById("tip");
+  el.querySelector("svg")?.remove();
+  const serie = diasPeriodo.slice().reverse(), W = el.clientWidth || 600, H = el.clientHeight || 290;
+  const m = { t: 22, r: 8, b: 26, l: 36 }, w = W - m.l - m.r, h = H - m.t - m.b;
+  if (!serie.length) return;
+  const max = Math.max(...serie.map((d) => d.novas)) || 1, passo = Math.pow(10, Math.floor(Math.log10(max))) * (max / Math.pow(10, Math.floor(Math.log10(max))) > 5 ? 2 : 1);
+  const topo = Math.ceil(max * 1.1 / passo) * passo, slot = w / serie.length, bw = Math.max(2, Math.min(42, slot - 2));
+  const y = (v) => m.t + h - v / topo * h;
+  const css = getComputedStyle(document.body), ban = css.getPropertyValue("--ban").trim(), line = css.getPropertyValue("--line").trim(), faint = css.getPropertyValue("--faint").trim(), muted = css.getPropertyValue("--muted").trim();
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Inter, sans-serif" font-size="11">`;
+  for (let v = 0; v <= topo; v += passo) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${line}" stroke-width="1" ${v ? 'stroke-dasharray="3 4"' : ""}/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end" fill="${faint}">${fmt(v)}</text>`;
+  const cadaN = Math.ceil(serie.length / Math.max(1, Math.floor(w / 48)));
+  const iMax = serie.findIndex((d) => d.novas === max);
+  serie.forEach((d, i) => {
+    const x = m.l + i * slot + (slot - bw) / 2, yy = y(d.novas), bh = m.t + h - yy, r = Math.min(4, bw / 2, bh);
+    s += `<path d="M${x},${m.t + h} V${yy + r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy + r} V${m.t + h} Z" fill="${ban}" opacity="${i === serie.length - 1 ? 1 : .78}"/>`;
+    s += `<rect x="${m.l + i * slot}" y="${m.t}" width="${slot}" height="${h}" fill="transparent" data-i="${i}"/>`;
+    if ((serie.length - 1 - i) % cadaN === 0) s += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle" fill="${faint}">${diaCurto(d.dia)}</text>`;
+    if ((i === iMax || i === serie.length - 1) && serie.length <= 60) s += `<text x="${x + bw / 2}" y="${yy - 7}" text-anchor="middle" fill="${muted}" font-weight="700">${fmt(d.novas)}</text>`;
+  });
+  el.insertAdjacentHTML("afterbegin", s + "</svg>");
+  el.querySelectorAll("rect[data-i]").forEach((r) => {
+    r.onmousemove = (ev) => {
+      const d = serie[r.dataset.i], b = el.getBoundingClientRect();
+      tip.innerHTML = `${diaBR(d.dia)}<br><b>${fmt(d.novas)}</b> novos bans · ${fmt(d.desbanidas)} desbans`;
+      tip.style.left = Math.min(Math.max(ev.clientX - b.left, 80), b.width - 80) + "px"; tip.style.top = (y(d.novas)) + "px"; tip.style.opacity = 1;
+    };
+    r.onmouseleave = () => tip.style.opacity = 0;
+  });
+}
+let _larg = 0;
+new ResizeObserver(() => { const l = document.getElementById("chart").clientWidth; if (l === _larg) return; _larg = l; clearTimeout(window._rz); window._rz = setTimeout(desenharGrafico, 80); }).observe(document.getElementById("chart"));
+
+async function carregarFazendas() {
+  const lotes = await Promise.all(diasPeriodo.map((d) => dados(`novas/${d.dia}.json`).then((l) => l.filter((f) => f.tipo === "nova").map((f) => ({ ...f, dia: d.dia }))).catch(() => [])));
+  fazendas = lotes.flat().map((f) => ({ ...f, idade: idade(f.criada_em), vip: f.vip_ate === undefined ? null : f.vip_ate && f.vip_ate > (f.ultima_atividade || 0) ? 1 : 0 }));
+  filtrar();
+}
+
+function filtrar() {
+  const dia = document.getElementById("dia").value, q = document.getElementById("busca").value.trim().toLowerCase();
+  const base = fazendas.filter((f) => !dia || f.dia === dia);
+  const lista = base.filter((f) => !q || String(f.id).includes(q) || String(f.username || "").toLowerCase().includes(q));
+  const n = base.length || 1, comVip = base.filter((f) => f.vip != null);
+  const st = [
+    ["Com falha de captcha", base.filter((f) => f.captcha_falhas > 0).length / n],
+    ["Com captcha ok", base.filter((f) => f.captcha_ok > 0).length / n],
+    ["Verificação social", base.filter((f) => f.social_verified).length / n],
+    ["VIP", comVip.length ? comVip.filter((f) => f.vip).length / comVip.length : null],
+  ];
+  document.getElementById("stats").innerHTML = st.map(([l, v]) => `<div class="stat"><div class="v">${v == null ? "—" : (v * 100).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + "%"}</div><div class="l">${l}</div><div class="bar"><i style="width:${(v || 0) * 100}%"></i></div></div>`).join("");
+  document.getElementById("info-faz").textContent = `${fmt(lista.length)} conta(s)`;
+  const cols = [["id", "Farm ID"], ["username", "Nome"], ["dia", "Banida em"], ["idade", "Idade da conta", "r"], ["captcha_falhas", "Captcha falhou", "r"], ["captcha_ok", "Captcha ok", "r"], ["social_verified", "Verif. social"], ["vip", "VIP"], ["ban_status", "Status"]];
+  lista.sort((a, b) => { const x = a[ordem.col], y = b[ordem.col]; return (x == null) - (y == null) || (typeof x === "string" || typeof y === "string" ? String(x).localeCompare(String(y)) : x - y) * ordem.dir; });
+  const sim = (v) => v == null ? '<span class="faint">—</span>' : v ? '<span class="pill unban">sim</span>' : '<span class="faint">não</span>';
+  document.getElementById("t-faz").innerHTML = "<thead><tr>" + cols.map(([c, t, cl]) => `<th class="sort ${cl || ""}" onclick="ordenar('${c}')">${t}${ordem.col === c ? (ordem.dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("") + "</tr></thead><tbody>" +
+    (lista.length ? lista.slice(0, 3000).map((f) => {
+      const [stT, stC] = STATUS[f.ban_status] || [f.ban_status || "—", "mute"];
+      return `<tr><td><b>${f.id}</b></td><td>${f.username || '<span class="faint">sem nome</span>'}</td><td class="muted">${diaBR(f.dia)}</td><td class=r>${f.idade == null ? "—" : fmt(f.idade) + " dias"}</td>
+        <td class="r ${f.captcha_falhas ? "num-ban" : "faint"}">${fmt(f.captcha_falhas)}</td><td class="r ${f.captcha_ok ? "" : "faint"}">${fmt(f.captcha_ok)}</td>
+        <td>${sim(f.social_verified)}</td><td>${sim(f.vip)}</td><td><span class="pill ${stC}">${stT}</span></td></tr>`;
+    }).join("") : `<tr><td colspan="9" class="empty">Nenhuma conta encontrada.</td></tr>`) + "</tbody>";
+}
+function ordenar(c) { ordem = { col: c, dir: ordem.col === c ? -ordem.dir : (c === "username" ? 1 : -1) }; filtrar(); }
+iniciar();
+</script>
+</body>
+</html>
