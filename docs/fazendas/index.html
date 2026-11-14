@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sunflower Land - Fazendas à Venda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0d13; --card: #131823; --card2: #181e2b; --line: #232b3a;
+    --text: #eef1f6; --muted: #8d97a8; --faint: #5d6778;
+    --ok: #2fc98a; --ok-soft: rgba(47,201,138,.14); --bad: #f0505c; --bad-soft: rgba(240,80,92,.14); --warn: #f2b34a; --warn-soft: rgba(242,179,74,.14);
+    --acc: #a77bf3; --glow: rgba(167,123,243,.12); --sel: #f6f7f9; --sel-text: #0a0d13;
+    --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.25);
+  }
+  body.light {
+    --bg: #f3f5f8; --card: #ffffff; --card2: #f7f8fa; --line: #e2e6ec;
+    --text: #141821; --muted: #5e6776; --faint: #8b94a3;
+    --ok: #128a5c; --ok-soft: rgba(18,138,92,.10); --bad: #d93644; --bad-soft: rgba(217,54,68,.10); --warn: #b7790f; --warn-soft: rgba(183,121,15,.10);
+    --acc: #7b4fd6; --glow: rgba(123,79,214,.08); --sel: #141821; --sel-text: #fff;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 6px 18px rgba(16,24,40,.05);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 500px at 50% -10%, var(--glow), transparent 60%), var(--bg); color: var(--text);
+    font-family: Inter, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; min-height: 100vh; }
+  a { color: inherit; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 18px; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--glow); font-size: 22px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .spacer { flex: 1; }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; }
+  nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 13px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); }
+  nav a:hover { color: var(--text); }
+  .icon-btn { border: 1px solid var(--line); background: var(--card); color: var(--muted); width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-size: 16px; box-shadow: var(--shadow); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi .lab { color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .kpi .val { font-size: 28px; font-weight: 800; letter-spacing: -.03em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kpi .foot { color: var(--faint); font-size: 12px; margin-top: 4px; }
+  .kpi.bad .val { color: var(--bad); } .kpi.ok .val { color: var(--ok); }
+  .filtros { display: flex; gap: 10px 14px; flex-wrap: wrap; align-items: flex-end; }
+  .campo { display: grid; gap: 5px; }
+  .campo label { font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .seg { display: inline-flex; background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; font-size: 12.5px; padding: 6px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+  .seg button.on { background: var(--sel); color: var(--sel-text); }
+  input, select { background: var(--card2); border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 10px; font: inherit; font-size: 13px; }
+  input[type=number] { width: 96px; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); padding: 7px 0; cursor: pointer; user-select: none; }
+  .chk input { accent-color: var(--acc); }
+  .scroll { overflow: auto; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 10px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); white-space: nowrap; cursor: pointer; user-select: none; z-index: 1; }
+  th:hover { color: var(--text); }
+  td { padding: 10px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; vertical-align: middle; }
+  tbody tr.linha { cursor: pointer; }
+  tbody tr.linha:hover td, tbody tr.aberta td { background: var(--card2); }
+  .r { text-align: right; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.bad { background: var(--bad-soft); color: var(--bad); } .pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.mute { background: var(--card2); color: var(--muted); }
+  .faint { color: var(--faint); } .muted { color: var(--muted); } .bad { color: var(--bad); } .warn { color: var(--warn); } .ok { color: var(--ok); }
+  .preco b { font-size: 14.5px; }
+  .det td { background: var(--card2); padding: 16px 18px 18px; white-space: normal; }
+  .det-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .det-grid div { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+  .det-grid b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .det-grid span { color: var(--muted); font-size: 11.5px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 12px; }
+  .tag { font-size: 12px; background: var(--card); border: 1px solid var(--line); padding: 3px 8px; border-radius: 999px; color: var(--muted); }
+  .tag.leg { color: var(--acc); border-color: var(--acc); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600; font-size: 13px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); margin-right: 6px; }
+  .about { color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+  .about b { color: var(--text); font-weight: 600; }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+  .err { color: var(--bad); }
+  h3 { font-size: 13px; margin: 10px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🏡</div>
+    <div>
+      <h1>Sunflower Land - Fazendas à Venda</h1>
+      <div class="sub" id="atualizado">carregando…</div>
+    </div>
+    <div class="spacer"></div>
+    <nav><a href="../">🏠 Início</a><a href="../banidas/">⛔ Banidas</a><a href="../prices/">📈 Preços</a><a href="../sfl/">💹 SFL</a></nav>
+    <button class="icon-btn" title="Trocar tema" onclick="trocarTema()">◐</button>
+  </header>
+
+  <div class="kpis">
+    <div class="card kpi"><div class="lab">Fazendas anunciadas</div><div class="val" id="k-total">—</div><div class="foot" id="k-total-f"></div></div>
+    <div class="card kpi bad"><div class="lab">Banidas ou em análise</div><div class="val" id="k-ban">—</div><div class="foot" id="k-ban-f"></div></div>
+    <div class="card kpi ok"><div class="lab">Mais barata limpa e ativa</div><div class="val" id="k-barata">—</div><div class="foot" id="k-barata-f"></div></div>
+    <div class="card kpi"><div class="lab">Jogaram nos últimos 7 dias</div><div class="val" id="k-ativas">—</div><div class="foot">entre as anunciadas limpas</div></div>
+  </div>
+
+  <div class="card">
+    <div class="filtros">
+      <div class="campo"><label>Situação</label><div class="seg" id="f-sit"><button data-v="limpa">Só limpas</button><button data-v="todas">Todas</button><button data-v="banida">Banidas / em análise</button></div></div>
+      <div class="campo"><label>Último save</label><div class="seg" id="f-save"><button data-v="7">7 dias</button><button data-v="30">30 dias</button><button data-v="90">90 dias</button><button data-v="0">Qualquer</button></div></div>
+      <div class="campo"><label>Level mín.</label><input type="number" id="f-level" min="0" placeholder="0" /></div>
+      <div class="campo"><label>Preço máx. (US$)</label><input type="number" id="f-preco" min="0" step="any" placeholder="sem limite" /></div>
+      <div class="campo"><label>Ilha</label><select id="f-ilha"><option value="">Todas</option></select></div>
+      <div class="campo"><label>Buscar</label><input id="f-busca" placeholder="nome, Farm ID, NFT, carteira" style="width:210px" /></div>
+      <div class="campo"><label>&nbsp;</label><div style="display:flex;gap:14px;flex-wrap:wrap">
+        <label class="chk"><input type="checkbox" id="f-legacy" /> Com skill legacy</label>
+        <label class="chk"><input type="checkbox" id="f-vip" /> VIP ativo</label>
+        <label class="chk" title="Esconde carteiras que anunciam 5 fazendas ou mais (muitas vezes contas criadas em série)"><input type="checkbox" id="f-lote" /> Esconder vendedores em lote</label>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="muted" id="info" style="margin-bottom:10px;font-size:12.5px"></div>
+    <div class="scroll" style="max-height:900px"><table id="tabela"></table></div>
+  </div>
+
+  <div class="card about">
+    <b>Como conferimos.</b> Os anúncios vêm da OpenSea (coleção Sunflower Land, rede Polygon). Os dados de cada fazenda vêm do próprio jogo: o arquivo diário oficial com todas as fazendas
+    e, ao longo do dia, uma reconsulta na API do jogo, que confirma de novo o banimento das anunciadas (a data aparece em "conferida em").<br />
+    <b>Limpa</b> = sem banimento. <b>Em análise</b> = o jogo está investigando (pode virar ban). <b>Banida</b> = bloqueada; comprar uma dessas é perder o dinheiro.
+    <b>Último save</b> = última vez que a fazenda salvou o jogo. <b>Skills legacy</b> = insígnias antigas que não se ganham mais.
+    <b>Valor dos itens</b> = quantidade × preço atual no market do jogo (colecionáveis, recursos e vestíveis). <b>Vendedor em lote</b> = carteira anunciando 5 fazendas ou mais.
+    Confira sempre o anúncio na OpenSea antes de comprar: aqui é só uma ajuda.
+  </div>
+</div>
+
+<script>
+const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+let tema = ls.get("sfl_ban_tema", "dark"); document.body.classList.toggle("light", tema === "light");
+function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.body.classList.toggle("light", tema === "light"); ls.set("sfl_ban_tema", tema); }
+
+let D = null, F = JSON.parse(ls.get("sfl_venda_filtros", "{}")), ordem = { col: "usd", dir: 1 }, aberta = null;
+F = { sit: "limpa", save: "30", level: "", preco: "", ilha: "", busca: "", legacy: false, vip: false, lote: false, ...F };
+const fmt = (v, c = 0) => v == null || isNaN(v) ? "—" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const usd = (v) => { if (v == null || isNaN(v)) return "—"; const c = v < 100 ? 2 : 0; return "US$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c }); };
+const dias = (ms) => ms ? Math.floor((Date.now() - ms) / 864e5) : null;
+const quando = (ms) => { const d = dias(ms); return d == null ? "—" : d === 0 ? "hoje" : d === 1 ? "ontem" : `há ${fmt(d)} dias`; };
+const dataBR = (ms) => ms ? new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+const curta = (w) => w ? w.slice(0, 6) + "…" + w.slice(-4) : "—";
+const ILHA = { basic: "Básica", spring: "Primavera", desert: "Deserto", volcano: "Vulcão" };
+function situacao(f) {
+  if (f.sem_dados) return ["sem dados", "mute", 3];
+  if (f.banida || f.ban_status === "permanent") return ["banida", "bad", 2];
+  if (f.ban_status === "investigating") return ["em análise", "warn", 1];
+  return ["limpa", "ok", 0];
+}
+const valorItensUsd = (f) => D.flower_usd && !f.sem_dados ? ((f.valor_nft || 0) + (f.valor_recursos || 0) + (f.valor_vestiveis || 0)) * D.flower_usd : null;
+
+async function iniciar() {
+  try {
+    D = await fetch("../data/venda/fazendas.json?v=" + Math.floor(Date.now() / 3e5)).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+    D.fazendas.forEach((f) => { f._sit = situacao(f); f._valor = valorItensUsd(f); f._save = dias(f.ultimo_save); f._legacy = (f.legacy || []).length; });
+    document.getElementById("atualizado").textContent = `Anúncios de ${dataBR(Date.parse(D.atualizado_em))} (Brasília) · dados do jogo de ${D.arquivo_do_dia.split("-").reverse().join("/")} + reconferência contínua`;
+    const ilhas = [...new Set(D.fazendas.map((f) => f.ilha).filter(Boolean))].sort();
+    document.getElementById("f-ilha").innerHTML += ilhas.map((i) => `<option value="${i}">${ILHA[i] || i}</option>`).join("");
+    for (const [id, k] of [["f-sit", "sit"], ["f-save", "save"]]) document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => { F[k] = b.dataset.v; aplicar(); });
+    for (const [id, k] of [["f-level", "level"], ["f-preco", "preco"], ["f-ilha", "ilha"], ["f-busca", "busca"]]) { const el = document.getElementById(id); el.value = F[k]; el.oninput = () => { F[k] = el.value; aplicar(); }; }
+    for (const [id, k] of [["f-legacy", "legacy"], ["f-vip", "vip"], ["f-lote", "lote"]]) { const el = document.getElementById(id); el.checked = F[k]; el.onchange = () => { F[k] = el.checked; aplicar(); }; }
+    kpis(); aplicar();
+  } catch (e) { document.getElementById("atualizado").innerHTML = `<span class="err">Erro ao carregar: ${e.message}</span>`; }
+}
+
+function kpis() {
+  const t = D.fazendas, comDados = t.filter((f) => !f.sem_dados), ban = comDados.filter((f) => f._sit[2] >= 1 && f._sit[2] <= 2);
+  document.getElementById("k-total").textContent = fmt(t.length);
+  document.getElementById("k-total-f").textContent = `${fmt(comDados.length)} com dados do jogo`;
+  document.getElementById("k-ban").textContent = fmt(ban.length);
+  document.getElementById("k-ban-f").textContent = comDados.length ? `${(ban.length / comDados.length * 100).toFixed(0)}% das anunciadas` : "";
+  const limpas = comDados.filter((f) => f._sit[2] === 0);
+  const barata = limpas.filter((f) => f.usd != null && f._save != null && f._save <= 30).sort((a, b) => a.usd - b.usd)[0];
+  document.getElementById("k-barata").textContent = barata ? usd(barata.usd) : "—";
+  document.getElementById("k-barata-f").textContent = barata ? `${barata.nome || "#" + barata.nft} · level ${barata.level} · save ${quando(barata.ultimo_save)}` : "";
+  document.getElementById("k-ativas").textContent = fmt(limpas.filter((f) => f._save != null && f._save <= 7).length);
+}
+
+function aplicar() {
+  ls.set("sfl_venda_filtros", JSON.stringify(F));
+  document.querySelectorAll("#f-sit button").forEach((b) => b.classList.toggle("on", b.dataset.v === F.sit));
+  document.querySelectorAll("#f-save button").forEach((b) => b.classList.toggle("on", b.dataset.v === F.save));
+  desenhar();
+}
+
+const COLS = [["nft", "Fazenda"], ["usd", "Preço", "r"], ["_sit", "Situação"], ["ultimo_save", "Último save"], ["level", "Level", "r"], ["skills", "Skills", "r"], ["ilha", "Ilha"], ["vip_ate", "VIP"], ["_valor", "Valor dos itens", "r"], ["vendedor_qtd", "Vendedor"], ["x", ""]];
+function ordenar(c) { if (c === "x") return; ordem = { col: c, dir: ordem.col === c ? -ordem.dir : (["usd", "_sit"].includes(c) ? 1 : -1) }; desenhar(); }
+function valorOrdem(f, c) { return c === "_sit" ? f._sit[2] : c === "nft" ? Number(f.nft) : f[c]; }
+
+function desenhar() {
+  const q = F.busca.trim().toLowerCase(), lvl = Number(F.level) || 0, pmax = Number(F.preco) || 0, save = Number(F.save) || 0;
+  const lista = D.fazendas.filter((f) => {
+    if (F.sit === "limpa" && f._sit[2] !== 0) return false;
+    if (F.sit === "banida" && !(f._sit[2] === 1 || f._sit[2] === 2)) return false;
+    if (save && (f._save == null || f._save > save)) return false;
+    if (lvl && !(f.level >= lvl)) return false;
+    if (pmax && !(f.usd != null && f.usd <= pmax)) return false;
+    if (F.ilha && f.ilha !== F.ilha) return false;
+    if (F.legacy && !f._legacy) return false;
+    if (F.vip && !(f.vip_ate > Date.now())) return false;
+    if (F.lote && f.vendedor_qtd >= 5) return false;
+    if (q && ![f.nome, f.id, f.nft, f.vendedor].some((x) => String(x || "").toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a, b) => { const x = valorOrdem(a, ordem.col), y = valorOrdem(b, ordem.col); return (x == null) - (y == null) || (typeof x === "string" ? x.localeCompare(y) : x - y) * ordem.dir; });
+  document.getElementById("info").textContent = `${fmt(lista.length)} fazenda(s) com esses filtros · clique numa linha para ver tudo`;
+  const linhas = lista.slice(0, 1500).map((f) => {
+    const [st, cl] = f._sit;
+    const vip = f.vip_ate > Date.now();
+    const lin = `<tr class="linha ${aberta === f.nft ? "aberta" : ""}" onclick="abrir('${f.nft}')">
+      <td><b>${f.nome || '<span class="faint">sem nome</span>'}</b><div class="faint" style="font-size:12px">NFT #${f.nft}${f.id && f.id !== f.nft ? " · Farm ID " + f.id : ""}</div></td>
+      <td class="r preco"><b>${usd(f.usd)}</b><div class="faint" style="font-size:12px">${fmt(f.preco, f.preco < 1 ? 4 : 2)} ${f.moeda}${f.anuncios > 1 ? ` · ${f.anuncios} anúncios` : ""}</div></td>
+      <td><span class="pill ${cl}">${st}</span>${f.captcha_falhas ? ` <span class="warn" title="falhas de captcha">⚠ ${f.captcha_falhas}</span>` : ""}</td>
+      <td class="${f._save > 90 ? "faint" : ""}">${quando(f.ultimo_save)}</td>
+      <td class=r><b>${f.level ?? "—"}</b></td>
+      <td class=r>${f.skills ?? "—"}${f._legacy ? ` <span class="pill" style="color:var(--acc);padding:1px 7px">+${f._legacy} legacy</span>` : ""}</td>
+      <td>${ILHA[f.ilha] || f.ilha || "—"}${f.expansoes ? ` <span class="faint">· ${f.expansoes} exp.</span>` : ""}</td>
+      <td>${f.sem_dados ? "—" : vip ? '<span class="pill ok">VIP</span>' : '<span class="faint">não</span>'}</td>
+      <td class=r>${usd(f._valor)}</td>
+      <td><span class="${f.vendedor_qtd >= 5 ? "warn" : "muted"}" title="${f.vendedor}">${curta(f.vendedor)}</span>${f.vendedor_qtd > 1 ? ` <span class="${f.vendedor_qtd >= 5 ? "warn" : "faint"}">(${f.vendedor_qtd})</span>` : ""}</td>
+      <td><a class="btn" style="padding:5px 9px" href="https://opensea.io/assets/matic/${D.contrato}/${f.nft}" target="_blank" rel="noopener" onclick="event.stopPropagation()">OpenSea ↗</a></td></tr>`;
+    return aberta === f.nft ? lin + detalhe(f) : lin;
+  }).join("");
+  document.getElementById("tabela").innerHTML = "<thead><tr>" + COLS.map(([c, t, cl]) => `<th class="${cl || ""}" onclick="ordenar('${c}')">${t}${ordem.col === c ? (ordem.dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("") + "</tr></thead><tbody>" +
+    (linhas || `<tr><td colspan="11" class="empty">Nenhuma fazenda com esses filtros.</td></tr>`) + "</tbody>";
+}
+
+function detalhe(f) {
+  if (f.sem_dados) return `<tr class="det"><td colspan="11">Essa fazenda foi anunciada depois do último arquivo do jogo; os dados aparecem na próxima atualização. Vendedor: ${f.vendedor}</td></tr>`;
+  const fl = (v) => D.flower_usd ? `${fmt(v, 0)} FLOWER <span class="faint">(${usd(v * D.flower_usd)})</span>` : `${fmt(v, 0)} FLOWER`;
+  const box = (t, v) => `<div><b>${v}</b><span>${t}</span></div>`;
+  return `<tr class="det"><td colspan="11">
+    <div class="det-grid">
+      ${box("Farm ID", f.id)}${box("Conta criada", f.criada_em ? new Date(f.criada_em).toLocaleDateString("pt-BR") + ` <span class="faint">(${fmt(dias(f.criada_em))} dias)</span>` : "—")}
+      ${box("Último save", dataBR(f.ultimo_save))}${box("Situação conferida em", f.checado_em ? dataBR(f.checado_em) + " (API)" : "arquivo de " + D.arquivo_do_dia.split("-").reverse().join("/"))}
+      ${box("XP", fmt(f.xp))}${box("Level", f.level)}${box("FLOWER na fazenda", fmt(f.flower, 2))}${box("Coins", fmt(f.coins))}${box("Gems", fmt(f.gems))}
+      ${box("Expansões", fmt(f.expansoes))}${box("Facção", f.faccao || "—")}${box("VIP até", f.vip_ate > 1e12 ? new Date(f.vip_ate).toLocaleDateString("pt-BR") + (f.vip_ate < Date.now() ? ' <span class="faint">(vencido)</span>' : "") : "nunca teve")}
+      ${box("Vestíveis", fmt(f.vestiveis))}${box("Itens colocados", fmt(f.colecionaveis))}
+      ${box("Captcha falhou / ok", `<span class="${f.captcha_falhas ? "bad" : ""}">${fmt(f.captcha_falhas)}</span> / ${fmt(f.captcha_ok)}`)}
+      ${box("Verificação social", f.social ? '<span class="ok">sim</span>' : "não")}${box("Conta verificada", f.verificada ? '<span class="ok">sim</span>' : "não")}
+      ${box("Valor colecionáveis", fl(f.valor_nft || 0))}${box("Valor recursos", fl(f.valor_recursos || 0))}${box("Valor vestíveis", fl(f.valor_vestiveis || 0))}
+    </div>
+    ${f.legacy?.length ? `<h3>Skills legacy</h3><div class="tags">${f.legacy.map((s) => `<span class="tag leg">${s}</span>`).join("")}</div>` : ""}
+    ${f.skills_lista?.length ? `<h3>Skills (${f.skills_lista.length})</h3><div class="tags">${f.skills_lista.map((s) => `<span class="tag">${s}</span>`).join("")}</div>` : ""}
+    ${f.top_itens?.length ? `<h3>Itens mais valiosos</h3><div class="tags">${f.top_itens.map(([n, q, v]) => `<span class="tag">${n} ×${fmt(q, Number.isInteger(q) ? 0 : 2)} · ${D.flower_usd ? usd(v * D.flower_usd) : fmt(v) + " FLOWER"}</span>`).join("")}</div>` : ""}
+    <div style="margin-top:6px"><a class="btn" href="https://opensea.io/assets/matic/${D.contrato}/${f.nft}" target="_blank" rel="noopener">Ver anúncio na OpenSea ↗</a><a class="btn" href="https://opensea.io/${f.vendedor}" target="_blank" rel="noopener">Perfil do vendedor ↗</a>
+    <span class="muted" style="font-size:12.5px">Vendedor ${f.vendedor} · ${f.vendedor_qtd} fazenda(s) à venda · anúncio expira ${f.fim ? new Date(f.fim).toLocaleDateString("pt-BR") : "—"}</span></div>
+  </td></tr>`;
+}
+function abrir(nft) { aberta = aberta === nft ? null : nft; desenhar(); }
+iniciar();
+</script>
+</body>
+</html>
