@@ -101,7 +101,7 @@
       <div class="preco" id="d-preco"></div>
       <div id="d-var"></div>
       <div class="spacer"></div>
-      <div class="seg" id="modos"><button data-m="linha">Linha</button><button data-m="velas">Velas</button></div>
+      <div class="seg" id="modos"><button data-m="velas">🕯 Velas</button><button data-m="linha">Linha</button></div>
       <div class="seg" id="janelas"><button data-j="7">7D</button><button data-j="30">30D</button><button data-j="90">90D</button><button data-j="9999">Tudo</button></div>
     </div>
     <div class="legend"><span id="leg-preco"></span><span class="faint" id="d-info"></span></div>
@@ -135,7 +135,7 @@ const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch
 let tema = ls.get("sfl_ban_tema", "dark"); document.body.classList.toggle("light", tema === "light");
 function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.body.classList.toggle("light", tema === "light"); ls.set("sfl_ban_tema", tema); if (atual) desenharDetalhe(); desenharTabela(); }
 
-let modo = ls.get("sfl_precos_modo", "linha");
+let modo = ls.get("sfl_precos_modo2", "velas"); // velas por padrão (como no terminal)
 let AGORA = null, COT = {}, moeda = ls.get("sfl_precos_moeda", "flower"), cat = ls.get("sfl_precos_cat", "crops"), janela = Number(ls.get("sfl_precos_janela", "30"));
 let ordem = { col: "v7", dir: -1 }, atual = null, serieAtual = null;
 const cache = {};
@@ -171,7 +171,7 @@ async function iniciar() {
     document.getElementById("cats").innerHTML = CATS.map(([k, t]) => `<button data-c="${k}">${t}</button>`).join("");
     document.querySelectorAll("#cats button").forEach((b) => b.onclick = () => { cat = b.dataset.c; ls.set("sfl_precos_cat", cat); desenharTabela(); });
     document.querySelectorAll("#moedas button").forEach((b) => b.onclick = () => { moeda = b.dataset.m; ls.set("sfl_precos_moeda", moeda); desenharTudo(); });
-    document.querySelectorAll("#modos button").forEach((b) => b.onclick = () => { modo = b.dataset.m; ls.set("sfl_precos_modo", modo); desenharDetalhe(); });
+    document.querySelectorAll("#modos button").forEach((b) => b.onclick = () => { modo = b.dataset.m; ls.set("sfl_precos_modo2", modo); desenharDetalhe(); });
     document.querySelectorAll("#janelas button").forEach((b) => b.onclick = () => { janela = Number(b.dataset.j); ls.set("sfl_precos_janela", janela); desenharDetalhe(); });
     desenharTudo();
     const doLink = decodeURIComponent(location.hash.slice(1));
