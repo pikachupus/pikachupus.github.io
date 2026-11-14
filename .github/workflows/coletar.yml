@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: coletar
+  group: repositorio   # uma rotina por vez escrevendo no repositório
   cancel-in-progress: false
 
 jobs:
@@ -29,6 +29,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data estado
-          git diff --cached --quiet || git commit -m "banidas $(date -u +%F)"
+          git add docs/data/dias.json docs/data/novas estado/ultimo.json.gz
+          git diff --cached --quiet && exit 0
+          git commit -m "banidas $(date -u +%F)"
+          git pull --rebase
           git push

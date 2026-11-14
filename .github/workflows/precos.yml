@@ -1,0 +1,36 @@
+name: Coletar precos
+
+on:
+  schedule:
+    - cron: "20 0,6,12,18 * * *"   # 4x por dia; a de 00:20 UTC (21:20 em Brasília) fecha o dia do jogo
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repositorio   # uma rotina por vez escrevendo no repositório
+  cancel-in-progress: false
+
+jobs:
+  precos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120   # a primeira vez busca todo o histórico (~30 min)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Coletar precos do market
+        run: node precos.mjs
+        env:
+          SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
+      - name: Salvar o resultado no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data/precos estado/precos
+          git diff --cached --quiet && exit 0
+          git commit -m "precos $(date -u +%F\ %H:%M)"
+          git pull --rebase
+          git push
