@@ -63,7 +63,7 @@
     <a class="card" href="sfl/" style="--c:var(--sfl)"><span class="seta">↗</span>
       <div class="top"><div class="ico">💹</div><h2>SFL Terminal</h2></div>
       <p>Compras e vendas de FLOWER ao vivo na Base e na Ronin, com a fazenda de cada carteira.</p>
-      <div class="stat"><b>em breve</b></div></a>
+      <div class="stat"><b id="s-sfl">—</b><span id="s-sfl-l">negociações nas últimas 24h</span></div></a>
   </div>
   <footer>Fontes: API e arquivo diário oficial do Sunflower Land (Community API), OpenSea e GeckoTerminal. Não é um site oficial do jogo.</footer>
 </div>
@@ -75,6 +75,7 @@ const j = (u) => fetch(u + "?v=" + Math.floor(Date.now() / 3e5)).then((r) => r.o
 const fmt = (v) => Number(v).toLocaleString("pt-BR");
 j("data/dias.json").then((d) => { const u = d && d.filter((x) => x.novas != null).sort((a, b) => b.dia.localeCompare(a.dia))[0]; if (u) { document.getElementById("s-ban").textContent = fmt(u.novas); document.getElementById("s-ban-l").textContent = `novos bans em ${u.dia.split("-").reverse().join("/")}`; } });
 j("data/precos/agora.json").then((a) => { if (a?.flower) document.getElementById("s-flower").textContent = "US$ " + a.flower.toLocaleString("pt-BR", { maximumFractionDigits: 4 }); });
+j("data/sfl/trades.json").then((d) => { if (!d) return; const desde = Date.now() / 1000 - 86400, l = d.trades.filter((x) => x[0] >= desde); document.getElementById("s-sfl").textContent = fmt(l.length); document.getElementById("s-sfl-l").textContent = `negociações nas últimas 24h · US$ ${fmt(Math.round(l.reduce((s, x) => s + x[5], 0)))}`; });
 j("data/venda/fazendas.json").then((v) => { if (!v) return; const ban = v.fazendas.filter((f) => f.banida || f.ban_status === "permanent" || f.ban_status === "investigating").length; document.getElementById("s-farm").textContent = fmt(v.fazendas.length); document.getElementById("s-farm-l").textContent = `fazendas anunciadas · ${fmt(ban)} banidas ou em análise`; });
 </script>
 </body>
