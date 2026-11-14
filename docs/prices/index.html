@@ -101,9 +101,10 @@
       <div class="preco" id="d-preco"></div>
       <div id="d-var"></div>
       <div class="spacer"></div>
+      <div class="seg" id="modos"><button data-m="linha">Linha</button><button data-m="velas">Velas</button></div>
       <div class="seg" id="janelas"><button data-j="7">7D</button><button data-j="30">30D</button><button data-j="90">90D</button><button data-j="9999">Tudo</button></div>
     </div>
-    <div class="legend"><span><i style="background:var(--s1)"></i>Preço (anúncio mais barato; sem anúncio, última venda)</span><span><i style="background:var(--s2)"></i>Maior oferta</span><span class="faint" id="d-info"></span></div>
+    <div class="legend"><span id="leg-preco"></span><span class="faint" id="d-info"></span></div>
     <div class="chart" id="ch-preco"><div class="tip" id="tip"></div></div>
     <div class="legend"><span><i style="background:var(--vol);height:8px"></i>Volume do dia (FLOWER)</span></div>
     <div class="chart" id="ch-vol"></div>
@@ -119,9 +120,10 @@
   </div>
 
   <div class="card about">
-    <b>De onde vêm os dados.</b> Do próprio jogo: o relatório diário do market (Community API) traz, para cada item, o anúncio mais barato, a maior oferta, a última venda, o volume e as negociações.
+    <b>De onde vêm os dados.</b> Do próprio jogo: o relatório diário do market (Community API) traz, para cada item, quanto foi vendido (volume e quantidade), quantas vendas houve e a última venda.
     O histórico começa em dezembro de 2025, quando o jogo passou a guardar esse relatório. O dia do jogo vira às 21h de Brasília.<br />
-    <b>Preço</b> = anúncio mais barato (floor); sem anúncio, a última venda. <b>Maior oferta</b> = quanto alguém paga agora (venda imediata).
+    <b>Preço vendido</b> = média do que foi realmente vendido no dia (FLOWER pago ÷ quantidade vendida), ou seja, o preço que está saindo; num dia sem venda, vale a última venda.
+    <b>Velas</b>: cada vela é um dia; abre na última venda do dia anterior, fecha na última venda do dia, e a sombra vai até o preço médio quando ele fica fora desse intervalo (verde = fechou acima, vermelha = abaixo).
     Os valores são por unidade, em FLOWER. Em US$ e R$, cada dia do gráfico usa a cotação do FLOWER daquele dia (CoinGecko); a tabela e o ponto de hoje usam a cotação atual do jogo. Atualiza de hora em hora.
   </div>
 </div>
@@ -133,6 +135,7 @@ const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch
 let tema = ls.get("sfl_ban_tema", "dark"); document.body.classList.toggle("light", tema === "light");
 function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.body.classList.toggle("light", tema === "light"); ls.set("sfl_ban_tema", tema); if (atual) desenharDetalhe(); desenharTabela(); }
 
+let modo = ls.get("sfl_precos_modo", "linha");
 let AGORA = null, COT = {}, moeda = ls.get("sfl_precos_moeda", "flower"), cat = ls.get("sfl_precos_cat", "crops"), janela = Number(ls.get("sfl_precos_janela", "30"));
 let ordem = { col: "v7", dir: -1 }, atual = null, serieAtual = null;
 const cache = {};
@@ -168,6 +171,7 @@ async function iniciar() {
     document.getElementById("cats").innerHTML = CATS.map(([k, t]) => `<button data-c="${k}">${t}</button>`).join("");
     document.querySelectorAll("#cats button").forEach((b) => b.onclick = () => { cat = b.dataset.c; ls.set("sfl_precos_cat", cat); desenharTabela(); });
     document.querySelectorAll("#moedas button").forEach((b) => b.onclick = () => { moeda = b.dataset.m; ls.set("sfl_precos_moeda", moeda); desenharTudo(); });
+    document.querySelectorAll("#modos button").forEach((b) => b.onclick = () => { modo = b.dataset.m; ls.set("sfl_precos_modo", modo); desenharDetalhe(); });
     document.querySelectorAll("#janelas button").forEach((b) => b.onclick = () => { janela = Number(b.dataset.j); ls.set("sfl_precos_janela", janela); desenharDetalhe(); });
     desenharTudo();
     const doLink = decodeURIComponent(location.hash.slice(1));
@@ -203,7 +207,7 @@ function spark(sp, w = 90, h = 26) {
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${cor(sobe ? "--up" : "--down")}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 
-const COLS = [["n", "Item"], ["p", "Preço", "r"], ["o", "Maior oferta", "r"], ["ch1", "24h", "r"], ["ch7", "7d", "r"], ["ch30", "30d", "r"], ["v7", "Volume 7d", "r"], ["l", "Anúncios", "r"], ["sp", "30 dias"]];
+const COLS = [["n", "Item"], ["p", "Preço vendido", "r"], ["s", "Última venda", "r"], ["ch1", "24h", "r"], ["ch7", "7d", "r"], ["ch30", "30d", "r"], ["v7", "Volume 7d", "r"], ["t1", "Vendas hoje", "r"], ["sp", "30 dias"]];
 function ordenar(c) { if (c === "sp") return; ordem = { col: c, dir: ordem.col === c ? -ordem.dir : (c === "n" ? 1 : -1) }; desenharTabela(); }
 function desenharTabela() {
   if (!AGORA) return;
@@ -214,9 +218,9 @@ function desenharTabela() {
   document.getElementById("tabela").innerHTML = "<thead><tr>" + COLS.map(([c, t, cl]) => `<th class="${cl || ""}" onclick="ordenar('${c}')">${t}${ordem.col === c ? (ordem.dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("") + "</tr></thead><tbody>" +
     (lista.length ? lista.slice(0, 1500).map((i) => `<tr class="${atual && atual.k === i.k ? "sel" : ""}" onclick="abrir('${i.k}')">
       <td><b>${i.n}</b>${cat === "todos" ? ` <span class="tag">${NOME_CAT[i.c] || i.c}</span>` : ""}</td>
-      <td class=r>${preco(i.p)}</td><td class="r muted">${preco(i.o)}</td>
+      <td class=r><b>${preco(i.p)}</b></td><td class="r muted">${preco(i.s)}</td>
       <td class=r>${varHtml(i.ch1)}</td><td class=r>${varHtml(i.ch7)}</td><td class=r>${varHtml(i.ch30)}</td>
-      <td class=r>${compacto(i.v7)}</td><td class="r muted">${inteiro(i.l)}</td><td>${spark(i.sp)}</td></tr>`).join("")
+      <td class=r>${compacto(i.v7)}</td><td class="r muted">${inteiro(i.t1)}</td><td>${spark(i.sp)}</td></tr>`).join("")
       : `<tr><td colspan="9" class="empty">Nenhum item.</td></tr>`) + "</tbody>";
 }
 
@@ -235,8 +239,11 @@ async function abrir(k) {
   const arquivos = await Promise.all(meses.map((m) => dados(`mes/${m}/${atual.c}.json`).catch(() => null)));
   if (!atual || atual.k !== pedido) return;
   const serie = [];
-  for (const a of arquivos) { if (!a) continue; const s = a.itens[k]; if (!s) continue; a.dias.forEach((d, j) => { if (s[j]) serie.push({ d, f: s[j][0], o: s[j][1], s: s[j][2], v: s[j][3], t: s[j][4], p: s[j][0] ?? s[j][2] }); }); }
-  serie.push({ d: AGORA.dia, f: atual.f, o: atual.o, s: atual.s, v: atual.v1, t: atual.t1, p: atual.p, hoje: true });
+  // linha mensal: [floor, oferta, última venda, volume, vendas, anúncios, ofertas, quantidade]; preço vendido = volume ÷ quantidade
+  for (const a of arquivos) { if (!a) continue; const s = a.itens[k]; if (!s) continue; a.dias.forEach((d, j) => { const l = s[j]; if (l) serie.push({ d, s: l[2], v: l[3], t: l[4], q: l[7], p: l[3] > 0 && l[7] > 0 ? l[3] / l[7] : l[2] }); }); }
+  serie.push({ d: AGORA.dia, s: atual.s, v: atual.v1, t: atual.t1, q: atual.q1, p: atual.p, hoje: true });
+  // velas diárias: abre na última venda do dia anterior, fecha na última venda do dia; sombra até o preço médio
+  serie.forEach((p, i) => { const ab = i ? serie[i - 1].s : null; p.o = ab ?? p.p; p.c = p.s ?? p.p; if (p.o != null && p.c != null) { const vs = [p.o, p.c, p.p].filter((x) => x != null); p.h = Math.max(...vs); p.l = Math.min(...vs); } });
   serieAtual = serie;
   desenharDetalhe();
 }
@@ -248,7 +255,9 @@ function desenharDetalhe() {
   document.getElementById("d-var").innerHTML = `${varHtml(atual.ch1)} <span class="faint">24h</span> &nbsp; ${varHtml(atual.ch7)} <span class="faint">7d</span> &nbsp; ${varHtml(atual.ch30)} <span class="faint">30d</span>`;
   if (!serieAtual) return;
   const s = serieAtual.slice(-janela);
-  document.getElementById("d-cat").textContent = `${NOME_CAT[atual.c] || atual.c} · ${inteiro(atual.l)} anúncios · ${inteiro(atual.q)} ofertas · última venda ${preco(atual.s)}`;
+  document.querySelectorAll("#modos button").forEach((b) => b.classList.toggle("on", b.dataset.m === modo));
+  document.getElementById("leg-preco").innerHTML = modo === "velas" ? `<i style="background:var(--up)"></i>dia que fechou acima <i style="background:var(--down);margin-left:10px"></i>abaixo · velas diárias com as vendas efetivas` : `<i style="background:var(--s1)"></i>Preço vendido (média do que foi vendido no dia)`;
+  document.getElementById("d-cat").textContent = `${NOME_CAT[atual.c] || atual.c} · última venda ${preco(atual.s)} · ${inteiro(atual.t1)} vendas hoje`;
   document.getElementById("d-info").textContent = s.length ? `${diaBR(s[0].d)} a ${diaBR(s[s.length - 1].d)} (último ponto = hoje, parcial)` : "";
   graficoPreco(s); graficoVolume(s);
 }
@@ -262,7 +271,7 @@ function graficoPreco(s) {
   const el = document.getElementById("ch-preco"), tip = document.getElementById("tip");
   el.querySelector("svg")?.remove();
   const W = el.clientWidth || 800, H = 280, m = { t: 12, r: 12, b: 26, l: 64 }, w = W - m.l - m.r, h = H - m.t - m.b;
-  const F = (p) => fator(p.d), vals = s.flatMap((p) => [p.p, p.o].filter((v) => v != null).map((v) => v * F(p))).filter((v) => !isNaN(v));
+  const F = (p) => fator(p.d), vals = s.flatMap((p) => (modo === "velas" ? [p.h, p.l] : [p.p]).filter((v) => v != null).map((v) => v * F(p))).filter((v) => !isNaN(v));
   if (!vals.length) { el.insertAdjacentHTML("afterbegin", `<svg viewBox="0 0 ${W} 80"><text x="${W / 2}" y="40" text-anchor="middle" fill="${cor("--muted")}">Sem preço no período</text></svg>`); return; }
   const e = escala(Math.min(...vals), Math.max(...vals));
   const x = (i) => m.l + (s.length === 1 ? w / 2 : i / (s.length - 1) * w), y = (v) => m.t + h - (v - e.ini) / (e.fim - e.ini) * h;
@@ -271,9 +280,19 @@ function graficoPreco(s) {
   const cada = Math.max(1, Math.ceil(s.length / Math.max(2, Math.floor(w / 70))));
   s.forEach((p, i) => { if ((s.length - 1 - i) % cada === 0) g += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" fill="${cor("--faint")}">${diaCurto(p.d)}</text>`; });
   const linha = (campo, c) => { let d = "", on = false; s.forEach((p, i) => { if (p[campo] == null) { on = false; return; } const v = p[campo] * F(p); if (isNaN(v)) { on = false; return; } d += (on ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); on = true; }); return `<path d="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`; };
-  g += linha("o", cor("--s2")) + linha("p", cor("--s1"));
   const ult = s.length - 1;
-  for (const [campo, c] of [["p", "--s1"], ["o", "--s2"]]) if (s[ult][campo] != null) g += `<circle cx="${x(ult)}" cy="${y(s[ult][campo] * F(s[ult]))}" r="4" fill="${cor(c)}" stroke="${cor("--card")}" stroke-width="2"/>`;
+  if (modo === "velas") {
+    const slot = w / Math.max(1, s.length), bw = Math.max(2, Math.min(14, slot * 0.7));
+    s.forEach((p, i) => {
+      if (p.o == null || p.c == null) return;
+      const k = F(p), sobe = p.c >= p.o, c = cor(sobe ? "--up" : "--down"), cx = x(i);
+      const yo = y(p.o * k), yc = y(p.c * k), topo = Math.min(yo, yc), alt = Math.max(1.5, Math.abs(yc - yo));
+      g += `<line x1="${cx}" x2="${cx}" y1="${y(p.h * k)}" y2="${y(p.l * k)}" stroke="${c}" stroke-width="1.2"/><rect x="${cx - bw / 2}" y="${topo}" width="${bw}" height="${alt}" rx="1" fill="${c}"/>`;
+    });
+  } else {
+    g += linha("p", cor("--s1"));
+    if (s[ult].p != null) g += `<circle cx="${x(ult)}" cy="${y(s[ult].p * F(s[ult]))}" r="4" fill="${cor("--s1")}" stroke="${cor("--card")}" stroke-width="2"/>`;
+  }
   g += `<line id="cruz" x1="0" x2="0" y1="${m.t}" y2="${m.t + h}" stroke="${cor("--muted")}" stroke-dasharray="2 3" opacity="0"/><rect x="${m.l}" y="${m.t}" width="${w}" height="${h}" fill="transparent" id="area"/>`;
   el.insertAdjacentHTML("afterbegin", g + "</svg>");
   const svg = el.querySelector("svg"), area = svg.querySelector("#area"), cruz = svg.querySelector("#cruz");
@@ -281,7 +300,7 @@ function graficoPreco(s) {
     const b = svg.getBoundingClientRect(), px = (ev.clientX - b.left) / b.width * W;
     const i = Math.max(0, Math.min(s.length - 1, Math.round((px - m.l) / (w || 1) * (s.length - 1)))), p = s[i];
     cruz.setAttribute("x1", x(i)); cruz.setAttribute("x2", x(i)); cruz.setAttribute("opacity", 1);
-    tip.innerHTML = `<b>${diaBR(p.d)}${p.hoje ? " (hoje)" : ""}</b><br>Floor: ${preco(p.f, p.d)}<br>Maior oferta: ${preco(p.o, p.d)}<br>Última venda: ${preco(p.s, p.d)}<br>Volume: ${compacto(p.v, p.d)} · ${inteiro(p.t)} negociações${moeda !== "flower" && COT[p.d] ? `<br><span style="opacity:.7">1 FLOWER = ${moeda === "usd" ? "US$ " + COT[p.d][0] : "R$ " + COT[p.d][1]}</span>` : ""}`;
+    tip.innerHTML = `<b>${diaBR(p.d)}${p.hoje ? " (hoje, parcial)" : ""}</b><br>Preço vendido (média): <b>${preco(p.p, p.d)}</b><br>Abertura: ${preco(p.o, p.d)} · Fechamento: ${preco(p.c, p.d)}<br>Volume: ${compacto(p.v, p.d)} · ${inteiro(p.t)} vendas · ${compacto(p.q)} unidades${moeda !== "flower" && COT[p.d] ? `<br><span style="opacity:.7">1 FLOWER = ${moeda === "usd" ? "US$ " + COT[p.d][0] : "R$ " + COT[p.d][1]}</span>` : ""}`;
     tip.style.opacity = 1; const lx = x(i) / W * b.width; tip.style.left = (lx > b.width - 200 ? lx - 190 : lx + 12) + "px"; tip.style.top = "10px";
   };
   area.onmouseleave = () => { tip.style.opacity = 0; cruz.setAttribute("opacity", 0); };
