@@ -52,6 +52,8 @@
   input[type=number] { width: 96px; }
   .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); padding: 7px 0; cursor: pointer; user-select: none; }
   .chk input { accent-color: var(--acc); }
+  .campo .chk { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; color: var(--muted); padding: 3px 0; }
+  .campo .chk:has(input:checked) { color: var(--text); }
   .scroll { overflow: auto; }
   table { width: 100%; border-collapse: separate; border-spacing: 0; }
   th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 10px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); white-space: nowrap; cursor: pointer; user-select: none; z-index: 1; }
@@ -107,9 +109,10 @@
       <div class="campo"><label>Level mín.</label><input type="number" id="f-level" min="0" placeholder="0" /></div>
       <div class="campo"><label>Preço máx. (US$)</label><input type="number" id="f-preco" min="0" step="any" placeholder="sem limite" /></div>
       <div class="campo"><label>Ilha</label><select id="f-ilha"><option value="">Todas</option></select></div>
-      <div class="campo"><label>Skill legacy</label><select id="f-legacy"><option value="">Qualquer</option><option value="*">Tem alguma legacy</option></select></div>
       <div class="campo"><label>Buscar</label><input id="f-busca" placeholder="nome, Farm ID, NFT, carteira" style="width:210px" /></div>
     </div>
+    <div class="campo" style="margin-top:12px"><label>Skills legacy <span class="faint" style="text-transform:none;letter-spacing:0">(marcando várias, mostra as que têm todas)</span></label>
+      <div id="f-legacys" style="display:flex;gap:6px 16px;flex-wrap:wrap"></div></div>
     <div class="filtros" style="margin-top:12px">
       <div class="campo"><label>Tem o NFT / vestível</label><input id="f-item" list="lista-itens" placeholder="digite e escolha (ex.: Golden Sheep)" style="width:300px" /><datalist id="lista-itens"></datalist></div>
       <div class="campo"><label>&nbsp;</label><div id="chips" style="display:flex;gap:6px;flex-wrap:wrap;padding:6px 0"></div></div>
@@ -159,8 +162,9 @@ function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.bod
 
 const TEM = { twitter: false, rosto: false };
 let D = null, F = JSON.parse(ls.get("sfl_venda_filtros", "{}")), ordem = { col: "usd", dir: 1 }, aberta = null;
-F = { sit: "limpa", save: "30", level: "", preco: "", ilha: "", busca: "", legacy: "", vip: false, lote: false, discord: false, telegram: false, twitter: false, rosto: false, semdup: false, mult: "", itens: [], ...F };
-if (typeof F.legacy !== "string") F.legacy = F.legacy ? "*" : "";
+F = { sit: "limpa", save: "30", level: "", preco: "", ilha: "", busca: "", legacys: [], algumaLeg: false, vip: false, lote: false, discord: false, telegram: false, twitter: false, rosto: false, semdup: false, mult: "", itens: [], ...F };
+if (!Array.isArray(F.legacys)) F.legacys = typeof F.legacy === "string" && F.legacy && F.legacy !== "*" ? [F.legacy] : [];
+F.algumaLeg = F.algumaLeg ?? F.legacy === "*" ?? false; delete F.legacy;
 if (!Array.isArray(F.itens)) F.itens = [];
 const fmt = (v, c = 0) => v == null || isNaN(v) ? "—" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
 const usd = (v) => { if (v == null || isNaN(v)) return "—"; const c = v < 100 ? 2 : 0; return "US$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c }); };
@@ -195,7 +199,16 @@ async function iniciar() {
     D.fazendas.forEach((f) => f._nomes.forEach((n) => { conta[n] = (conta[n] || 0) + 1; }));
     const tipo = Object.fromEntries(D.itens.map(([n, t]) => [n, t]));
     document.getElementById("lista-itens").innerHTML = Object.keys(conta).sort().map((n) => `<option value="${n}">${tipo[n] === "w" ? "vestível" : "NFT"} · em ${conta[n]} fazenda(s)</option>`).join("");
-    document.getElementById("f-legacy").innerHTML += (D.legacy || []).map((n) => `<option value="${n}">${n}</option>`).join("");
+    // uma caixinha por skill legacy (com quantas fazendas anunciadas têm cada uma)
+    const contaLeg = {}; D.fazendas.forEach((f) => (f.legacy || []).forEach((n) => { contaLeg[n] = (contaLeg[n] || 0) + 1; }));
+    const boxLeg = document.getElementById("f-legacys");
+    boxLeg.innerHTML = `<label class="chk"><input type="checkbox" data-leg="*" ${F.algumaLeg ? "checked" : ""} /> <b>Tem alguma legacy</b></label>` +
+      (D.legacy || []).map((n) => `<label class="chk"><input type="checkbox" data-leg="${n}" ${F.legacys.includes(n) ? "checked" : ""} /> ${n} <span class="faint">(${contaLeg[n] || 0})</span></label>`).join("");
+    boxLeg.querySelectorAll("input").forEach((el) => el.onchange = () => {
+      if (el.dataset.leg === "*") F.algumaLeg = el.checked;
+      else F.legacys = el.checked ? [...new Set([...F.legacys, el.dataset.leg])] : F.legacys.filter((x) => x !== el.dataset.leg);
+      aplicar();
+    });
     const itemEl = document.getElementById("f-item");
     itemEl.onchange = () => { const v = itemEl.value.trim(); if (conta[v] && !F.itens.includes(v)) { F.itens.push(v); aplicar(); } itemEl.value = ""; };
     document.getElementById("b-garimpo").onclick = () => { F.sit = "limpa"; F.save = "0"; ordem = { col: "_mult", dir: -1 }; document.querySelectorAll("#f-sit button,#f-save button"); aplicar(); };
@@ -210,7 +223,7 @@ async function iniciar() {
     const ilhas = [...new Set(D.fazendas.map((f) => f.ilha).filter(Boolean))].sort();
     document.getElementById("f-ilha").innerHTML += ilhas.map((i) => `<option value="${i}">${ILHA[i] || i}</option>`).join("");
     for (const [id, k] of [["f-sit", "sit"], ["f-save", "save"]]) document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => { F[k] = b.dataset.v; aplicar(); });
-    for (const [id, k] of [["f-level", "level"], ["f-preco", "preco"], ["f-ilha", "ilha"], ["f-busca", "busca"], ["f-legacy", "legacy"], ["f-mult", "mult"]]) { const el = document.getElementById(id); el.value = F[k]; el.oninput = () => { F[k] = el.value; aplicar(); }; }
+    for (const [id, k] of [["f-level", "level"], ["f-preco", "preco"], ["f-ilha", "ilha"], ["f-busca", "busca"], ["f-mult", "mult"]]) { const el = document.getElementById(id); el.value = F[k]; el.oninput = () => { F[k] = el.value; aplicar(); }; }
     for (const [id, k] of [["f-vip", "vip"], ["f-lote", "lote"], ["f-discord", "discord"], ["f-telegram", "telegram"], ["f-twitter", "twitter"], ["f-rosto", "rosto"], ["f-semdup", "semdup"]]) { const el = document.getElementById(id); el.checked = F[k]; el.onchange = () => { F[k] = el.checked; aplicar(); }; }
     kpis(); aplicar();
   } catch (e) { document.getElementById("atualizado").innerHTML = `<span class="err">Erro ao carregar: ${e.message}</span>`; }
@@ -251,8 +264,8 @@ function desenhar() {
     if (lvl && !(f.level >= lvl)) return false;
     if (pmax && !(f.usd != null && f.usd <= pmax)) return false;
     if (F.ilha && f.ilha !== F.ilha) return false;
-    if (F.legacy === "*" && !f._legacy) return false;
-    if (F.legacy && F.legacy !== "*" && !(f.legacy || []).includes(F.legacy)) return false;
+    if (F.algumaLeg && !f._legacy) return false;
+    if (F.legacys.length && !F.legacys.every((n) => (f.legacy || []).includes(n))) return false;
     if (F.vip && !(f.vip_ate > Date.now())) return false;
     if (F.lote && f.vendedor_qtd >= 5) return false;
     if (F.discord && !f.discord) return false;
