@@ -1,0 +1,34 @@
+name: Coletar banidas
+
+on:
+  schedule:
+    - cron: "30 23 * * *"   # todo dia 23:30 UTC = 20:30 em Brasília (o arquivo do jogo sai ~22:00 UTC)
+  workflow_dispatch:         # botão "Run workflow" pra rodar na hora
+
+permissions:
+  contents: write
+
+concurrency:
+  group: coletar
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Coletar o arquivo diário
+        run: node coletar.mjs
+        env:
+          SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
+      - name: Salvar o resultado no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data estado
+          git diff --cached --quiet || git commit -m "banidas $(date -u +%F)"
+          git push
