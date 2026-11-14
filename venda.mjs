@@ -218,15 +218,18 @@ async function main() {
 
   // Reconferência pela API (as checadas há mais tempo primeiro).
   const fila = [...lista.keys()].filter((n) => cache.fazendas[n]?.id).sort((a, b) => (cache.fazendas[a].checado_em || 0) - (cache.fazendas[b].checado_em || 0)).slice(0, CHECAR);
-  let mudou = 0;
+  let mudou = 0, feitas = 0;
+  const inicio = Date.now(), TETO = Number(process.env.VENDA_TEMPO_MAX || 240000); // a API do jogo é lenta no GitHub (IP compartilhado)
   for (const nft of fila) {
+    if (Date.now() - inicio > TETO) { console.log(`API: teto de ${TETO / 1000}s atingido; o resto fica para a próxima rodada.`); break; }
+    feitas++;
     const j = await api(`/community/farms/${cache.fazendas[nft].id}`);
     if (!j?.farm) continue;
     const novo = resumo({ ...j, lastActivity: j.updatedAt }, M);
     if (novo.banida !== cache.fazendas[nft].banida) mudou++;
     cache.fazendas[nft] = { ...cache.fazendas[nft], ...novo, fonte: "api", checado_em: Date.now() };
   }
-  console.log(`API: ${fila.length} reconferidas, ${mudou} mudaram de situação de ban.`);
+  console.log(`API: ${feitas} reconferidas em ${Math.round((Date.now() - inicio) / 1000)}s, ${mudou} mudaram de situação de ban.`);
 
   // Quantas fazendas cada carteira está vendendo.
   const porVendedor = {};
