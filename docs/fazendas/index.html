@@ -107,13 +107,32 @@
       <div class="campo"><label>Level mín.</label><input type="number" id="f-level" min="0" placeholder="0" /></div>
       <div class="campo"><label>Preço máx. (US$)</label><input type="number" id="f-preco" min="0" step="any" placeholder="sem limite" /></div>
       <div class="campo"><label>Ilha</label><select id="f-ilha"><option value="">Todas</option></select></div>
+      <div class="campo"><label>Skill legacy</label><select id="f-legacy"><option value="">Qualquer</option><option value="*">Tem alguma legacy</option></select></div>
       <div class="campo"><label>Buscar</label><input id="f-busca" placeholder="nome, Farm ID, NFT, carteira" style="width:210px" /></div>
-      <div class="campo"><label>&nbsp;</label><div style="display:flex;gap:14px;flex-wrap:wrap">
-        <label class="chk"><input type="checkbox" id="f-legacy" /> Com skill legacy</label>
-        <label class="chk"><input type="checkbox" id="f-vip" /> VIP ativo</label>
-        <label class="chk" title="Esconde carteiras que anunciam 5 fazendas ou mais (muitas vezes contas criadas em série)"><input type="checkbox" id="f-lote" /> Esconder vendedores em lote</label>
-      </div></div>
     </div>
+    <div class="filtros" style="margin-top:12px">
+      <div class="campo"><label>Tem o NFT / vestível</label><input id="f-item" list="lista-itens" placeholder="digite e escolha (ex.: Golden Sheep)" style="width:300px" /><datalist id="lista-itens"></datalist></div>
+      <div class="campo"><label>&nbsp;</label><div id="chips" style="display:flex;gap:6px;flex-wrap:wrap;padding:6px 0"></div></div>
+      <div class="campo"><label>Valor vendável ÷ preço, mín.</label><input type="number" id="f-mult" min="0" step="any" placeholder="ex.: 2" /></div>
+      <div class="campo"><label>&nbsp;</label><button class="btn" id="b-garimpo" title="Limpas, ordenadas pelo que vale o que tem dentro em relação ao preço">⛏ Garimpo</button></div>
+    </div>
+    <div class="filtros" style="margin-top:6px">
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <label class="chk"><input type="checkbox" id="f-vip" /> VIP ativo</label>
+        <label class="chk"><input type="checkbox" id="f-discord" /> Discord</label>
+        <label class="chk"><input type="checkbox" id="f-telegram" /> Telegram</label>
+        <label class="chk"><input type="checkbox" id="f-twitter" /> Twitter (X)</label>
+        <label class="chk"><input type="checkbox" id="f-rosto" /> Rosto verificado</label>
+        <label class="chk" title="O mesmo rosto já foi usado para verificar outra fazenda (sinal de contas em série)"><input type="checkbox" id="f-semdup" /> Sem rosto duplicado</label>
+        <label class="chk" title="Esconde carteiras que anunciam 5 fazendas ou mais (muitas vezes contas criadas em série)"><input type="checkbox" id="f-lote" /> Esconder vendedores em lote</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="selo" style="display:flex;gap:14px;align-items:center;border-color:var(--ok)">
+    <div style="font-size:26px">🛡️</div>
+    <div style="line-height:1.55"><b>Banimento conferido direto no jogo.</b> <span class="muted">Nenhuma fazenda banida, em análise ou bloqueada aparece como "limpa". A situação de cada anunciada é reconferida na API oficial do jogo ao longo do dia
+      (<span id="selo-pct">—</span>), além do arquivo diário oficial. Mesmo assim, confira na hora da compra: o ban pode acontecer depois.</span></div>
   </div>
 
   <div class="card">
@@ -126,7 +145,9 @@
     e, ao longo do dia, uma reconsulta na API do jogo, que confirma de novo o banimento das anunciadas (a data aparece em "conferida em").<br />
     <b>Limpa</b> = sem banimento. <b>Em análise</b> = o jogo está investigando (pode virar ban). <b>Banida</b> = bloqueada; comprar uma dessas é perder o dinheiro.
     <b>Último save</b> = última vez que a fazenda salvou o jogo. <b>Skills legacy</b> = insígnias antigas que não se ganham mais.
-    <b>Valor dos itens</b> = quantidade × preço atual no market do jogo (colecionáveis, recursos e vestíveis). <b>Vendedor em lote</b> = carteira anunciando 5 fazendas ou mais.
+    <b>Valor vendável</b> = NFTs (colecionáveis) e vestíveis que estão dentro da fazenda × preço médio pelo qual estão sendo vendidos agora no market do jogo; é o que daria para tirar vendendo esses itens (recursos e skills ficam de fora; skill legacy não tem preço).
+    <b>Vendável ÷ preço</b> = quantas vezes o que tem dentro vale o preço da fazenda. <b>Vendedor em lote</b> = carteira anunciando 5 fazendas ou mais.
+    <b>Redes sociais</b>: o jogo informa Discord (conectado/verificado) e Telegram; Twitter e verificação facial não vêm nos dados públicos, então não aparecem aqui.
     Confira sempre o anúncio na OpenSea antes de comprar: aqui é só uma ajuda.
   </div>
 </div>
@@ -136,8 +157,11 @@ const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch
 let tema = ls.get("sfl_ban_tema", "dark"); document.body.classList.toggle("light", tema === "light");
 function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.body.classList.toggle("light", tema === "light"); ls.set("sfl_ban_tema", tema); }
 
+const TEM = { twitter: false, rosto: false };
 let D = null, F = JSON.parse(ls.get("sfl_venda_filtros", "{}")), ordem = { col: "usd", dir: 1 }, aberta = null;
-F = { sit: "limpa", save: "30", level: "", preco: "", ilha: "", busca: "", legacy: false, vip: false, lote: false, ...F };
+F = { sit: "limpa", save: "30", level: "", preco: "", ilha: "", busca: "", legacy: "", vip: false, lote: false, discord: false, telegram: false, twitter: false, rosto: false, semdup: false, mult: "", itens: [], ...F };
+if (typeof F.legacy !== "string") F.legacy = F.legacy ? "*" : "";
+if (!Array.isArray(F.itens)) F.itens = [];
 const fmt = (v, c = 0) => v == null || isNaN(v) ? "—" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
 const usd = (v) => { if (v == null || isNaN(v)) return "—"; const c = v < 100 ? 2 : 0; return "US$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c }); };
 const dias = (ms) => ms ? Math.floor((Date.now() - ms) / 864e5) : null;
@@ -148,21 +172,46 @@ const ILHA = { basic: "Básica", spring: "Primavera", desert: "Deserto", volcano
 function situacao(f) {
   if (f.sem_dados) return ["sem dados", "mute", 3];
   if (f.banida || f.ban_status === "permanent") return ["banida", "bad", 2];
+  if (f.ban_status === "lock") return ["bloqueada", "bad", 2];
   if (f.ban_status === "investigating") return ["em análise", "warn", 1];
   return ["limpa", "ok", 0];
 }
-const valorItensUsd = (f) => D.flower_usd && !f.sem_dados ? ((f.valor_nft || 0) + (f.valor_recursos || 0) + (f.valor_vestiveis || 0)) * D.flower_usd : null;
+const conferida = (f) => f.checado_em ? f.checado_em : D.arquivo_do_dia ? Date.parse(D.arquivo_do_dia + "T22:00:00Z") : null;
+const horasDesde = (ms) => ms ? Math.max(0, Math.round((Date.now() - ms) / 36e5)) : null;
 
 async function iniciar() {
   try {
     D = await fetch("../data/venda/fazendas.json?v=" + Math.floor(Date.now() / 3e5)).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
-    D.fazendas.forEach((f) => { f._sit = situacao(f); f._valor = valorItensUsd(f); f._save = dias(f.ultimo_save); f._legacy = (f.legacy || []).length; });
+    D.itens = D.itens || [];
+    D.fazendas.forEach((f) => {
+      f._sit = situacao(f); f._save = dias(f.ultimo_save); f._legacy = (f.legacy || []).length;
+      f._vend = D.flower_usd && f.valor_vendavel != null ? f.valor_vendavel * D.flower_usd : null;
+      f._mult = f._vend != null && f.usd > 0 ? f._vend / f.usd : null;
+      f._nomes = new Set((f.it || []).map(([i]) => D.itens[i]?.[0]));
+      f._conf = conferida(f);
+    });
+    // lista de NFTs/vestíveis que existem nas fazendas anunciadas (com quantas fazendas têm cada um)
+    const conta = {};
+    D.fazendas.forEach((f) => f._nomes.forEach((n) => { conta[n] = (conta[n] || 0) + 1; }));
+    const tipo = Object.fromEntries(D.itens.map(([n, t]) => [n, t]));
+    document.getElementById("lista-itens").innerHTML = Object.keys(conta).sort().map((n) => `<option value="${n}">${tipo[n] === "w" ? "vestível" : "NFT"} · em ${conta[n]} fazenda(s)</option>`).join("");
+    document.getElementById("f-legacy").innerHTML += (D.legacy || []).map((n) => `<option value="${n}">${n}</option>`).join("");
+    const itemEl = document.getElementById("f-item");
+    itemEl.onchange = () => { const v = itemEl.value.trim(); if (conta[v] && !F.itens.includes(v)) { F.itens.push(v); aplicar(); } itemEl.value = ""; };
+    document.getElementById("b-garimpo").onclick = () => { F.sit = "limpa"; F.save = "0"; ordem = { col: "_mult", dir: -1 }; document.querySelectorAll("#f-sit button,#f-save button"); aplicar(); };
+    TEM.twitter = D.fazendas.some((f) => f.twitter); TEM.rosto = D.fazendas.some((f) => f.rosto || f.rosto_duplicado);
+    // filtros sociais só aparecem quando o jogo informa aquele dado em alguma fazenda
+    for (const [id, campo] of [["f-discord", "discord"], ["f-telegram", "telegram"], ["f-twitter", "twitter"], ["f-rosto", "rosto"], ["f-semdup", "rosto_duplicado"]]) {
+      if (!D.fazendas.some((f) => f[campo])) { document.getElementById(id).closest("label").style.display = "none"; F[id.slice(2)] = false; }
+    }
+    const rec = D.fazendas.filter((f) => f.checado_em && Date.now() - f.checado_em < 864e5).length, comD = D.fazendas.filter((f) => !f.sem_dados).length;
+    document.getElementById("selo-pct").textContent = `${fmt(rec)} de ${fmt(comD)} reconferidas nas últimas 24 h`;
     document.getElementById("atualizado").textContent = `Anúncios de ${dataBR(Date.parse(D.atualizado_em))} (Brasília) · dados do jogo de ${D.arquivo_do_dia.split("-").reverse().join("/")} + reconferência contínua`;
     const ilhas = [...new Set(D.fazendas.map((f) => f.ilha).filter(Boolean))].sort();
     document.getElementById("f-ilha").innerHTML += ilhas.map((i) => `<option value="${i}">${ILHA[i] || i}</option>`).join("");
     for (const [id, k] of [["f-sit", "sit"], ["f-save", "save"]]) document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => { F[k] = b.dataset.v; aplicar(); });
-    for (const [id, k] of [["f-level", "level"], ["f-preco", "preco"], ["f-ilha", "ilha"], ["f-busca", "busca"]]) { const el = document.getElementById(id); el.value = F[k]; el.oninput = () => { F[k] = el.value; aplicar(); }; }
-    for (const [id, k] of [["f-legacy", "legacy"], ["f-vip", "vip"], ["f-lote", "lote"]]) { const el = document.getElementById(id); el.checked = F[k]; el.onchange = () => { F[k] = el.checked; aplicar(); }; }
+    for (const [id, k] of [["f-level", "level"], ["f-preco", "preco"], ["f-ilha", "ilha"], ["f-busca", "busca"], ["f-legacy", "legacy"], ["f-mult", "mult"]]) { const el = document.getElementById(id); el.value = F[k]; el.oninput = () => { F[k] = el.value; aplicar(); }; }
+    for (const [id, k] of [["f-vip", "vip"], ["f-lote", "lote"], ["f-discord", "discord"], ["f-telegram", "telegram"], ["f-twitter", "twitter"], ["f-rosto", "rosto"], ["f-semdup", "semdup"]]) { const el = document.getElementById(id); el.checked = F[k]; el.onchange = () => { F[k] = el.checked; aplicar(); }; }
     kpis(); aplicar();
   } catch (e) { document.getElementById("atualizado").innerHTML = `<span class="err">Erro ao carregar: ${e.message}</span>`; }
 }
@@ -184,10 +233,12 @@ function aplicar() {
   ls.set("sfl_venda_filtros", JSON.stringify(F));
   document.querySelectorAll("#f-sit button").forEach((b) => b.classList.toggle("on", b.dataset.v === F.sit));
   document.querySelectorAll("#f-save button").forEach((b) => b.classList.toggle("on", b.dataset.v === F.save));
+  document.getElementById("chips").innerHTML = F.itens.map((n) => `<span class="pill warn" style="cursor:pointer" onclick="tirarItem('${n.replace(/'/g, "\\'")}')">${n} ✕</span>`).join("");
   desenhar();
 }
+function tirarItem(n) { F.itens = F.itens.filter((x) => x !== n); aplicar(); }
 
-const COLS = [["nft", "Fazenda"], ["usd", "Preço", "r"], ["_sit", "Situação"], ["ultimo_save", "Último save"], ["level", "Level", "r"], ["skills", "Skills", "r"], ["ilha", "Ilha"], ["vip_ate", "VIP"], ["_valor", "Valor dos itens", "r"], ["vendedor_qtd", "Vendedor"], ["x", ""]];
+const COLS = [["nft", "Fazenda"], ["usd", "Preço", "r"], ["_sit", "Situação"], ["ultimo_save", "Último save"], ["level", "Level", "r"], ["skills", "Skills", "r"], ["ilha", "Ilha"], ["_vend", "Valor vendável", "r"], ["_mult", "Vendável ÷ preço", "r"], ["vendedor_qtd", "Vendedor"], ["x", ""]];
 function ordenar(c) { if (c === "x") return; ordem = { col: c, dir: ordem.col === c ? -ordem.dir : (["usd", "_sit"].includes(c) ? 1 : -1) }; desenhar(); }
 function valorOrdem(f, c) { return c === "_sit" ? f._sit[2] : c === "nft" ? Number(f.nft) : f[c]; }
 
@@ -200,9 +251,17 @@ function desenhar() {
     if (lvl && !(f.level >= lvl)) return false;
     if (pmax && !(f.usd != null && f.usd <= pmax)) return false;
     if (F.ilha && f.ilha !== F.ilha) return false;
-    if (F.legacy && !f._legacy) return false;
+    if (F.legacy === "*" && !f._legacy) return false;
+    if (F.legacy && F.legacy !== "*" && !(f.legacy || []).includes(F.legacy)) return false;
     if (F.vip && !(f.vip_ate > Date.now())) return false;
     if (F.lote && f.vendedor_qtd >= 5) return false;
+    if (F.discord && !f.discord) return false;
+    if (F.telegram && !f.telegram) return false;
+    if (F.twitter && !f.twitter) return false;
+    if (F.rosto && f.rosto !== "ok") return false;
+    if (F.semdup && f.rosto_duplicado) return false;
+    if (F.itens.length && !F.itens.every((n) => f._nomes.has(n))) return false;
+    if (Number(F.mult) && !(f._mult >= Number(F.mult))) return false;
     if (q && ![f.nome, f.id, f.nft, f.vendedor].some((x) => String(x || "").toLowerCase().includes(q))) return false;
     return true;
   }).sort((a, b) => { const x = valorOrdem(a, ordem.col), y = valorOrdem(b, ordem.col); return (x == null) - (y == null) || (typeof x === "string" ? x.localeCompare(y) : x - y) * ordem.dir; });
@@ -213,15 +272,15 @@ function desenhar() {
     const lin = `<tr class="linha ${aberta === f.nft ? "aberta" : ""}" onclick="abrir('${f.nft}')">
       <td><b>${f.nome || '<span class="faint">sem nome</span>'}</b><div class="faint" style="font-size:12px">NFT #${f.nft}${f.id && f.id !== f.nft ? " · Farm ID " + f.id : ""}</div></td>
       <td class="r preco"><b>${usd(f.usd)}</b><div class="faint" style="font-size:12px">${fmt(f.preco, f.preco < 1 ? 4 : 2)} ${f.moeda}${f.anuncios > 1 ? ` · ${f.anuncios} anúncios` : ""}</div></td>
-      <td><span class="pill ${cl}">${st}</span>${f.captcha_falhas ? ` <span class="warn" title="falhas de captcha">⚠ ${f.captcha_falhas}</span>` : ""}</td>
+      <td><span class="pill ${cl}">${cl === "ok" ? "✓ " : ""}${st}</span>${f.captcha_falhas ? ` <span class="warn" title="falhas de captcha">⚠ ${f.captcha_falhas}</span>` : ""}${f.rosto_duplicado ? ' <span class="warn" title="rosto já usado em outra fazenda">⚠ rosto</span>' : ""}<div class="faint" style="font-size:11.5px">${f.sem_dados ? "" : "conferida há " + (horasDesde(f._conf) ?? "?") + " h"}</div></td>
       <td class="${f._save > 90 ? "faint" : ""}">${quando(f.ultimo_save)}</td>
       <td class=r><b>${f.level ?? "—"}</b></td>
       <td class=r>${f.skills ?? "—"}${f._legacy ? ` <span class="pill" style="color:var(--acc);padding:1px 7px">+${f._legacy} legacy</span>` : ""}</td>
       <td>${ILHA[f.ilha] || f.ilha || "—"}${f.expansoes ? ` <span class="faint">· ${f.expansoes} exp.</span>` : ""}</td>
-      <td>${f.sem_dados ? "—" : vip ? '<span class="pill ok">VIP</span>' : '<span class="faint">não</span>'}</td>
-      <td class=r>${usd(f._valor)}</td>
+      <td class=r><b>${usd(f._vend)}</b><div class="faint" style="font-size:11.5px">${f.it ? f.it.length + " NFT/vestíveis" : ""}${vip ? " · VIP" : ""}</div></td>
+      <td class="r ${f._mult >= 1 ? "ok" : "muted"}"><b>${f._mult == null ? "—" : f._mult.toLocaleString("pt-BR", { maximumFractionDigits: f._mult >= 10 ? 0 : 1 }) + "×"}</b></td>
       <td><span class="${f.vendedor_qtd >= 5 ? "warn" : "muted"}" title="${f.vendedor}">${curta(f.vendedor)}</span>${f.vendedor_qtd > 1 ? ` <span class="${f.vendedor_qtd >= 5 ? "warn" : "faint"}">(${f.vendedor_qtd})</span>` : ""}</td>
-      <td><a class="btn" style="padding:5px 9px" href="https://opensea.io/assets/matic/${D.contrato}/${f.nft}" target="_blank" rel="noopener" onclick="event.stopPropagation()">OpenSea ↗</a></td></tr>`;
+      <td><a class="btn" style="padding:5px 10px;${cl === "ok" ? "border-color:var(--ok);color:var(--ok)" : ""}" href="https://opensea.io/assets/matic/${D.contrato}/${f.nft}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${cl === "ok" ? "Comprar na OpenSea ↗" : "Ver na OpenSea ↗"}</a></td></tr>`;
     return aberta === f.nft ? lin + detalhe(f) : lin;
   }).join("");
   document.getElementById("tabela").innerHTML = "<thead><tr>" + COLS.map(([c, t, cl]) => `<th class="${cl || ""}" onclick="ordenar('${c}')">${t}${ordem.col === c ? (ordem.dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("") + "</tr></thead><tbody>" +
@@ -240,13 +299,16 @@ function detalhe(f) {
       ${box("Expansões", fmt(f.expansoes))}${box("Facção", f.faccao || "—")}${box("VIP até", f.vip_ate > 1e12 ? new Date(f.vip_ate).toLocaleDateString("pt-BR") + (f.vip_ate < Date.now() ? ' <span class="faint">(vencido)</span>' : "") : "nunca teve")}
       ${box("Vestíveis", fmt(f.vestiveis))}${box("Itens colocados", fmt(f.colecionaveis))}
       ${box("Captcha falhou / ok", `<span class="${f.captcha_falhas ? "bad" : ""}">${fmt(f.captcha_falhas)}</span> / ${fmt(f.captcha_ok)}`)}
-      ${box("Verificação social", f.social ? '<span class="ok">sim</span>' : "não")}${box("Conta verificada", f.verificada ? '<span class="ok">sim</span>' : "não")}
+      ${box("Discord", f.discord === 2 ? '<span class="ok">verificado</span>' : f.discord === 1 ? "conectado" : "não")}${box("Telegram", f.telegram ? '<span class="ok">vinculado</span>' : "não")}${TEM.twitter ? box("Twitter (X)", f.twitter ? '<span class="ok">vinculado</span>' : "não") : ""}
+      ${TEM.rosto ? box("Rosto", f.rosto === "ok" ? '<span class="ok">verificado</span>' : f.rosto === "falhou" ? '<span class="bad">falhou</span>' : f.rosto === "trocou_dono" ? '<span class="warn">trocou de dono depois</span>' : "não verificado") + box("Rosto em outra fazenda", f.rosto_duplicado ? '<span class="bad">sim (duplicado)</span>' : "não") : ""}
+      ${box("Verificação social (ban)", f.social ? '<span class="ok">sim</span>' : "não")}${box("Valor vendável", D.flower_usd ? usd(f._vend) : fmt(f.valor_vendavel) + " FLOWER")}
       ${box("Valor colecionáveis", fl(f.valor_nft || 0))}${box("Valor recursos", fl(f.valor_recursos || 0))}${box("Valor vestíveis", fl(f.valor_vestiveis || 0))}
     </div>
     ${f.legacy?.length ? `<h3>Skills legacy</h3><div class="tags">${f.legacy.map((s) => `<span class="tag leg">${s}</span>`).join("")}</div>` : ""}
     ${f.skills_lista?.length ? `<h3>Skills (${f.skills_lista.length})</h3><div class="tags">${f.skills_lista.map((s) => `<span class="tag">${s}</span>`).join("")}</div>` : ""}
-    ${f.top_itens?.length ? `<h3>Itens mais valiosos</h3><div class="tags">${f.top_itens.map(([n, q, v]) => `<span class="tag">${n} ×${fmt(q, Number.isInteger(q) ? 0 : 2)} · ${D.flower_usd ? usd(v * D.flower_usd) : fmt(v) + " FLOWER"}</span>`).join("")}</div>` : ""}
-    <div style="margin-top:6px"><a class="btn" href="https://opensea.io/assets/matic/${D.contrato}/${f.nft}" target="_blank" rel="noopener">Ver anúncio na OpenSea ↗</a><a class="btn" href="https://opensea.io/${f.vendedor}" target="_blank" rel="noopener">Perfil do vendedor ↗</a>
+    ${f.it?.length ? `<h3>NFTs e vestíveis dentro (${f.it.length}) · valor pelo preço vendido no market</h3><div class="tags">${f.it.map(([i, q]) => { const [n, t, p] = D.itens[i] || []; return { n, t, q, v: p != null ? p * q : null }; }).sort((a, b) => (b.v || 0) - (a.v || 0))
+      .map((x) => `<span class="tag" ${x.t === "w" ? 'style="border-style:dashed"' : ""}>${x.n}${x.q > 1 ? " ×" + fmt(x.q) : ""} · ${x.v == null ? "sem preço" : D.flower_usd ? usd(x.v * D.flower_usd) : fmt(x.v) + " FLOWER"}</span>`).join("")}</div><div class="faint" style="font-size:12px">borda tracejada = vestível</div>` : ""}
+    <div style="margin-top:6px"><a class="btn" style="${f._sit[2] === 0 ? "border-color:var(--ok);color:var(--ok)" : ""}" href="https://opensea.io/assets/matic/${D.contrato}/${f.nft}" target="_blank" rel="noopener">${f._sit[2] === 0 ? "Comprar na OpenSea ↗" : "Ver anúncio na OpenSea ↗"}</a><a class="btn" href="https://opensea.io/${f.vendedor}" target="_blank" rel="noopener">Perfil do vendedor ↗</a>
     <span class="muted" style="font-size:12.5px">Vendedor ${f.vendedor} · ${f.vendedor_qtd} fazenda(s) à venda · anúncio expira ${f.fim ? new Date(f.fim).toLocaleDateString("pt-BR") : "—"}</span></div>
   </td></tr>`;
 }
