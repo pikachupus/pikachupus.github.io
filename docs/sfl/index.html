@@ -4,23 +4,318 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SFL Terminal</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
-  :root { --bg:#0a0d13; --card:#131823; --line:#232b3a; --text:#eef1f6; --muted:#8d97a8; --acc:#2fc98a; }
-  body.light { --bg:#f3f5f8; --card:#fff; --line:#e2e6ec; --text:#141821; --muted:#5e6776; --acc:#128a5c; }
-  body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg); color:var(--text); font-family:Inter,-apple-system,"Segoe UI",sans-serif; padding:16px; box-sizing:border-box; }
-  .card { max-width:520px; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px; text-align:center; }
-  h1 { margin:8px 0; font-size:24px; font-weight:800; } p { color:var(--muted); line-height:1.6; }
-  a { color:var(--acc); font-weight:600; text-decoration:none; }
+  :root {
+    --bg: #0a0d13; --card: #131823; --card2: #181e2b; --line: #232b3a;
+    --text: #eef1f6; --muted: #8d97a8; --faint: #5d6778;
+    --up: #2fc98a; --up-soft: rgba(47,201,138,.14); --down: #f0505c; --down-soft: rgba(240,80,92,.14); --warn: #f2b34a; --warn-soft: rgba(242,179,74,.14);
+    --acc: #2fc98a; --glow: rgba(47,201,138,.10); --sel: #f6f7f9; --sel-text: #0a0d13;
+    --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.25);
+  }
+  body.light {
+    --bg: #f3f5f8; --card: #ffffff; --card2: #f7f8fa; --line: #e2e6ec;
+    --text: #141821; --muted: #5e6776; --faint: #8b94a3;
+    --up: #128a5c; --up-soft: rgba(18,138,92,.10); --down: #d93644; --down-soft: rgba(217,54,68,.10); --warn: #b7790f; --warn-soft: rgba(183,121,15,.10);
+    --acc: #128a5c; --glow: rgba(18,138,92,.07); --sel: #141821; --sel-text: #fff;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 6px 18px rgba(16,24,40,.05);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 500px at 20% -10%, var(--glow), transparent 60%), var(--bg); color: var(--text);
+    font-family: Inter, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; min-height: 100vh; }
+  a { color: inherit; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 18px; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--glow); font-size: 22px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+  .vivo { width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 0 var(--up); animation: pulso 2s infinite; }
+  .vivo.off { background: var(--faint); animation: none; }
+  @keyframes pulso { 0% { box-shadow: 0 0 0 0 rgba(47,201,138,.6); } 70% { box-shadow: 0 0 0 8px rgba(47,201,138,0); } 100% { box-shadow: 0 0 0 0 rgba(47,201,138,0); } }
+  .spacer { flex: 1; }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; }
+  nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 13px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); }
+  nav a:hover { color: var(--text); }
+  .icon-btn { border: 1px solid var(--line); background: var(--card); color: var(--muted); width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-size: 16px; box-shadow: var(--shadow); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+  .controles { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; gap: 2px; box-shadow: var(--shadow); flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; font-size: 13px; padding: 7px 12px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+  .seg button.on { background: var(--sel); color: var(--sel-text); }
+  input { background: var(--card); border: 1px solid var(--line); color: var(--text); padding: 9px 12px; border-radius: 10px; font: inherit; font-size: 13px; width: 260px; box-shadow: var(--shadow); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--warn-soft); color: var(--warn); border-radius: 999px; padding: 5px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi .lab { color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .kpi .val { font-size: 26px; font-weight: 800; letter-spacing: -.03em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kpi .foot { color: var(--faint); font-size: 12px; margin-top: 4px; }
+  .barra { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 10px; gap: 2px; }
+  .barra i { display: block; height: 100%; }
+  #grafico { height: 380px; position: relative; }
+  .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .card-h h2 { margin: 0; font-size: 15px; font-weight: 700; }
+  .note { color: var(--muted); font-size: 12.5px; }
+  .abas { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; flex-wrap: wrap; }
+  .abas button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; font-size: 13.5px; padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .abas button.on { color: var(--text); border-bottom-color: var(--acc); }
+  .scroll { overflow: auto; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 9px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); white-space: nowrap; cursor: pointer; user-select: none; z-index: 1; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tbody tr:hover td { background: var(--card2); }
+  tr.novo td { animation: brilho 2.5s ease-out; }
+  @keyframes brilho { from { background: var(--up-soft); } to { background: transparent; } }
+  .r { text-align: right; }
+  .pill { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .pill.up { background: var(--up-soft); color: var(--up); } .pill.down { background: var(--down-soft); color: var(--down); } .pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.mute { background: var(--card2); color: var(--muted); }
+  .up { color: var(--up); } .down { color: var(--down); } .faint { color: var(--faint); } .muted { color: var(--muted); }
+  .cart { cursor: pointer; border-bottom: 1px dashed var(--faint); }
+  .rede { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: var(--card2); color: var(--muted); }
+  .about { color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+  .about b { color: var(--text); font-weight: 600; }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+  .err { color: var(--down); }
 </style>
 </head>
 <body>
-<div class="card">
-  <div style="font-size:34px">💹</div>
-  <h1>SFL Terminal</h1>
-  <p>Em construção: compras e vendas de FLOWER ao vivo na Base e na Ronin, com a fazenda de cada carteira.</p>
-  <p><a href="../">← Voltar ao início</a></p>
+<div class="wrap">
+  <header>
+    <div class="logo">💹</div>
+    <div>
+      <h1>SFL Terminal</h1>
+      <div class="sub"><span class="vivo" id="vivo"></span><span id="status">carregando…</span></div>
+    </div>
+    <div class="spacer"></div>
+    <nav><a href="../">🏠 Início</a><a href="../banidas/">⛔ Banidas</a><a href="../prices/">📈 Preços</a><a href="../fazendas/">🏡 Fazendas</a></nav>
+    <button class="icon-btn" title="Trocar tema" onclick="trocarTema()">◐</button>
+  </header>
+
+  <div class="controles">
+    <div class="seg" id="redes"><button data-v="todas">Todas as redes</button><button data-v="base">Base</button><button data-v="ronin">Ronin</button></div>
+    <div class="seg" id="janelas"><button data-v="1">24h</button><button data-v="7">7 dias</button><button data-v="30">30 dias</button></div>
+    <input id="busca" placeholder="Filtrar carteira, fazenda ou nome" />
+    <span id="filtro"></span>
+  </div>
+
+  <div class="kpis">
+    <div class="card kpi"><div class="lab" id="k-preco-l">FLOWER</div><div class="val" id="k-preco">—</div><div class="foot" id="k-preco-f"></div></div>
+    <div class="card kpi"><div class="lab">Volume 24h (pool)</div><div class="val" id="k-vol">—</div><div class="foot" id="k-vol-f"></div></div>
+    <div class="card kpi"><div class="lab" id="k-cv-l">Compras × vendas</div><div class="val" id="k-cv">—</div><div class="barra" id="k-cv-b"></div><div class="foot" id="k-cv-f"></div></div>
+    <div class="card kpi"><div class="lab" id="k-cart-l">Carteiras</div><div class="val" id="k-cart">—</div><div class="foot" id="k-cart-f"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2 id="g-titulo">Preço do FLOWER</h2><span class="note" id="g-nota"></span></div>
+    <div id="grafico"></div>
+  </div>
+
+  <div class="card">
+    <div class="abas" id="abas"><button data-v="tape">Ao vivo</button><button data-v="fazendas">Por fazenda</button><button data-v="carteiras">Top carteiras</button></div>
+    <div class="note" id="info" style="margin-bottom:8px"></div>
+    <div class="scroll" style="max-height:640px"><table id="tabela"></table></div>
+  </div>
+
+  <div class="card about">
+    <b>De onde vêm os dados.</b> As negociações são dos pools oficiais de FLOWER na <b>Base</b> (FLOWER/USDC) e na <b>Ronin</b> (FLOWER/WRON), pelo GeckoTerminal.
+    "Ao vivo" busca as mais recentes direto do seu navegador a cada minuto; o histórico de 30 dias é guardado de hora em hora.
+    A fazenda de cada carteira vem da OpenSea (NFT da fazenda na mesma carteira, na Polygon), e o nome e o banimento vêm do próprio jogo.
+    <b>Líquido</b> = compras − vendas: positivo é quem está acumulando FLOWER; negativo é quem está vendendo. Carteiras sem fazenda podem ser bots, exchanges ou contas que guardam a fazenda em outra carteira.
+  </div>
 </div>
-<script>try { if (localStorage.getItem("sfl_ban_tema") === "light") document.body.classList.add("light"); } catch {}</script>
+
+<script>
+const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+let tema = ls.get("sfl_ban_tema", "dark"); document.body.classList.toggle("light", tema === "light");
+function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.body.classList.toggle("light", tema === "light"); ls.set("sfl_ban_tema", tema); montarGrafico(); }
+
+const REDES = ["base", "ronin"], ROTULO = { base: "Base", ronin: "Ronin" };
+let POOLS = [{ rede: "base", pool: "0xafe30319a948f322585fafc1cab1671a47eb3786" }, { rede: "ronin", pool: "0xe61554fc62e4072f5526cec54fd22ba12ac2c95f" }];
+let rede = ls.get("sfl_t_rede", "todas"), janela = Number(ls.get("sfl_t_janela", "1")), aba = ls.get("sfl_t_aba", "tape"), filtroCarteira = null;
+let TRADES = new Map(), CART = {}, USDBRL = null, FLOWER_TOKEN = {}, POOLINFO = {}, ordem = { col: aba === "tape" ? "t" : "vol", dir: -1 }, idsVistos = new Set(), primeira = true;
+
+const v$ = (v, c = 2) => v == null || isNaN(v) ? "—" : "US$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const vR = (v) => v == null || isNaN(v) || !USDBRL ? "—" : "R$ " + (v * USDBRL).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = (v, c = 0) => v == null || isNaN(v) ? "—" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const comp = (v) => v == null ? "—" : Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(v);
+const curta = (w) => w.slice(0, 6) + "…" + w.slice(-4);
+const quando = (t) => { const s = (Date.now() - t) / 1000; return s < 60 ? "agora" : s < 3600 ? `há ${Math.floor(s / 60)} min` : s < 86400 ? `há ${Math.floor(s / 3600)} h` : `há ${Math.floor(s / 86400)} d`; };
+const hora = (t) => new Date(t).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const cor = (n) => getComputedStyle(document.body).getPropertyValue(n).trim();
+const cache = (p) => fetch(p + "?v=" + Math.floor(Date.now() / 6e4)).then((r) => r.ok ? r.json() : null).catch(() => null);
+// GeckoTerminal: 30 consultas/min por pessoa; se recusar (429), espera e tenta de novo
+async function gt(caminho) {
+  for (let t = 0; t < 3; t++) {
+    const r = await fetch("https://api.geckoterminal.com/api/v2" + caminho, { headers: { accept: "application/json" } });
+    if (r.ok) return r.json();
+    if (r.status !== 429) throw new Error("HTTP " + r.status);
+    await new Promise((ok) => setTimeout(ok, 4000 * (t + 1)));
+  }
+  throw new Error("limite de consultas");
+}
+const ultimoPreco = (r) => { let m = null; for (const x of TRADES.values()) if (x.rede === r && (!m || x.t > m.t)) m = x; return m ? m.u / m.f : null; };
+
+const CHAVES = new Set(); // carteira|segundo: evita contar duas vezes a mesma negociação (histórico + ao vivo)
+const chaveDe = (w, t) => `${w}|${Math.round(t / 1000)}`;
+function addTrade(x) { const c = chaveDe(x.w, x.t); if (TRADES.has(x.id) || CHAVES.has(c)) return; TRADES.set(x.id, x); CHAVES.add(c); }
+
+async function iniciar() {
+  const [hist, cart, precos] = await Promise.all([cache("../data/sfl/trades.json"), cache("../data/sfl/carteiras.json"), cache("../data/precos/agora.json")]);
+  if (precos?.flower && precos?.flower_brl) USDBRL = precos.flower_brl / precos.flower;
+  CART = cart || {};
+  if (hist) {
+    if (hist.pools) POOLS = hist.pools;
+    for (const [s, r, k, wi, f, u] of hist.trades) addTrade({ id: `h${s}_${wi}_${f}`, t: s * 1000, rede: hist.redes[r], k, w: hist.carteiras[wi], f, u });
+  }
+  for (const [id, sel, k] of [["redes", "rede"], ["janelas", "janela"], ["abas", "aba"]]) {
+    document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => {
+      if (sel === "rede") rede = b.dataset.v; else if (sel === "janela") janela = Number(b.dataset.v); else aba = b.dataset.v;
+      ls.set("sfl_t_" + sel, b.dataset.v); ordem = { col: aba === "tape" ? "t" : "vol", dir: -1 };
+      if (sel !== "aba") montarGrafico();
+      desenhar();
+    });
+  }
+  document.getElementById("busca").oninput = () => desenhar();
+  await aoVivo();
+  montarGrafico();
+  setInterval(aoVivo, 60000);
+  setInterval(() => desenharKpis(), 30000);
+}
+
+// Busca direto no GeckoTerminal as negociações mais recentes e o resumo de cada pool.
+async function aoVivo() {
+  let ok = true;
+  for (const { rede: r, pool } of POOLS) {
+    try {
+      const info = await gt(`/networks/${r}/pools/${pool}`);
+      POOLINFO[r] = info.data?.attributes || POOLINFO[r] || {};
+      FLOWER_TOKEN[r] = (info.data?.relationships?.base_token?.data?.id || "").split("_")[1]?.toLowerCase() || FLOWER_TOKEN[r];
+      const j = await gt(`/networks/${r}/pools/${pool}/trades`);
+      for (const raw of j.data || []) {
+        const a = raw.attributes || {};
+        if (!a.tx_from_address || a.is_anomalous) continue;
+        const compra = String(a.to_token_address || "").toLowerCase() === FLOWER_TOKEN[r];
+        const f = Number(compra ? a.to_token_amount : a.from_token_amount), u = Number(a.volume_in_usd);
+        if (!f || !u) continue;
+        const t = Date.parse(a.block_timestamp), w = a.tx_from_address.toLowerCase();
+        addTrade({ id: raw.id, t, rede: r, k: compra ? 1 : 0, w, f, u, tx: a.tx_hash, vivo: !primeira });
+      }
+    } catch { ok = false; }
+  }
+  primeira = false;
+  document.getElementById("vivo").classList.toggle("off", !ok);
+  document.getElementById("status").textContent = (ok ? "ao vivo · atualizado " : "GeckoTerminal ocupado, mostrando o histórico guardado · tenta de novo em 1 min · ") + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  desenhar();
+}
+
+function filtrados() {
+  const desde = Date.now() - janela * 864e5, q = document.getElementById("busca").value.trim().toLowerCase();
+  return [...TRADES.values()].filter((x) => x.t >= desde && (rede === "todas" || x.rede === rede) && (!filtroCarteira || x.w === filtroCarteira) && (!q || [x.w, ...(CART[x.w] || [])].some((v) => v != null && String(v).toLowerCase().includes(q))));
+}
+
+function desenharKpis() {
+  const r = rede === "todas" ? "base" : rede, p = POOLINFO[r] || {};
+  const preco = Number(p.base_token_price_usd) || ultimoPreco(r), ch = Number(p.price_change_percentage?.h24);
+  document.getElementById("k-preco-l").textContent = `FLOWER na ${ROTULO[r]}`;
+  document.getElementById("k-preco").textContent = preco ? v$(preco, 4) : "—";
+  document.getElementById("k-preco-f").innerHTML = (isNaN(ch) ? "" : `<span class="${ch >= 0 ? "up" : "down"}">${ch >= 0 ? "▲ +" : "▼ "}${ch.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</span> 24h · `) + (USDBRL && preco ? vR(preco).replace(/,(\d{2})$/, (m) => m) : "") +
+    (rede === "todas" && POOLINFO.ronin?.base_token_price_usd ? ` · Ronin ${v$(Number(POOLINFO.ronin.base_token_price_usd), 4)}` : "");
+  const vols = (rede === "todas" ? REDES : [rede]).map((x) => Number(POOLINFO[x]?.volume_usd?.h24) || 0), liq = (rede === "todas" ? REDES : [rede]).map((x) => Number(POOLINFO[x]?.reserve_in_usd) || 0);
+  document.getElementById("k-vol").textContent = v$(vols.reduce((a, b) => a + b, 0), 0);
+  document.getElementById("k-vol-f").textContent = `liquidez ${v$(liq.reduce((a, b) => a + b, 0), 0)}`;
+  const L = filtrados(), comp$ = L.filter((x) => x.k).reduce((s, x) => s + x.u, 0), vend$ = L.filter((x) => !x.k).reduce((s, x) => s + x.u, 0), tot = comp$ + vend$ || 1;
+  const nomeJ = janela === 1 ? "24h" : janela + " dias";
+  document.getElementById("k-cv-l").textContent = `Compras × vendas (${nomeJ})`;
+  document.getElementById("k-cv").innerHTML = `<span class="up">${comp(comp$)}</span> <span class="faint" style="font-size:18px">×</span> <span class="down">${comp(vend$)}</span>`;
+  document.getElementById("k-cv-b").innerHTML = `<i style="width:${comp$ / tot * 100}%;background:var(--up)"></i><i style="width:${vend$ / tot * 100}%;background:var(--down)"></i>`;
+  document.getElementById("k-cv-f").textContent = `US$ · ${num(L.length)} negociações · líquido ${comp$ >= vend$ ? "+" : "−"}${v$(Math.abs(comp$ - vend$), 0)}`;
+  const ws = new Set(L.map((x) => x.w)), comFaz = [...ws].filter((w) => CART[w]).length;
+  document.getElementById("k-cart-l").textContent = `Carteiras (${nomeJ})`;
+  document.getElementById("k-cart").textContent = num(ws.size);
+  document.getElementById("k-cart-f").textContent = ws.size ? `${num(comFaz)} com fazenda identificada (${(comFaz / ws.size * 100).toFixed(0)}%)` : "";
+}
+
+function fazendaHtml(w) {
+  const c = CART[w];
+  if (!c) return '<span class="faint">—</span>';
+  const [nft, nome, , banida, st] = c;
+  const pill = banida || st === "permanent" ? ' <span class="pill down">banida</span>' : st === "investigating" ? ' <span class="pill warn">em análise</span>' : "";
+  return `<a href="https://opensea.io/assets/matic/0x2b4a66557a79263275826ad31a4cddc2789334bd/${nft}" target="_blank" rel="noopener">#${nft}</a> <b>${nome || ""}</b>${pill}`;
+}
+function carteiraHtml(w) { return `<span class="cart" title="${w}" onclick="filtrar('${w}')">${curta(w)}</span> <a class="faint" href="https://opensea.io/${w}" target="_blank" rel="noopener" title="ver na OpenSea">↗</a>`; }
+function filtrar(w) { filtroCarteira = filtroCarteira === w ? null : w; desenhar(); }
+function ordenar(c) { ordem = { col: c, dir: ordem.col === c ? -ordem.dir : -1 }; desenhar(); }
+function cab(cols) { return "<thead><tr>" + cols.map(([c, t, cl]) => `<th class="${cl || ""}" onclick="ordenar('${c}')">${t}${ordem.col === c ? (ordem.dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("") + "</tr></thead>"; }
+const ord = (L) => L.sort((a, b) => { const x = a[ordem.col], y = b[ordem.col]; return (x == null) - (y == null) || (typeof x === "string" ? String(x).localeCompare(y) : x - y) * ordem.dir; });
+
+function desenhar() {
+  for (const [id, v] of [["redes", rede], ["janelas", String(janela)], ["abas", aba]]) document.querySelectorAll(`#${id} button`).forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+  document.getElementById("filtro").innerHTML = filtroCarteira ? `<span class="chip" onclick="filtrar('${filtroCarteira}')">carteira ${curta(filtroCarteira)} ✕</span>` : "";
+  desenharKpis();
+  const L = filtrados(), el = document.getElementById("tabela"), info = document.getElementById("info");
+  if (aba === "tape") {
+    const linhas = ord(L.map((x) => ({ ...x, preco: x.u / x.f }))).slice(0, 800);
+    info.textContent = `${num(L.length)} negociações · mostrando as ${num(linhas.length)} ${ordem.col === "t" ? "mais recentes" : "primeiras"} · clique numa carteira para filtrar`;
+    el.innerHTML = cab([["t", "Quando"], ["k", "Tipo"], ["preco", "Preço", "r"], ["f", "FLOWER", "r"], ["u", "US$", "r"], ["u", "R$", "r"], ["w", "Carteira"], ["nft", "Fazenda"], ["rede", "Rede"]]) + "<tbody>" +
+      (linhas.map((x) => `<tr class="${x.vivo && !idsVistos.has(x.id) ? "novo" : ""}"><td title="${hora(x.t)}">${hora(x.t)} <span class="faint">${quando(x.t)}</span></td>
+        <td><span class="pill ${x.k ? "up" : "down"}">${x.k ? "Compra" : "Venda"}</span></td><td class=r>${v$(x.preco, 4)}</td><td class=r>${num(x.f, 2)}</td>
+        <td class="r ${x.k ? "up" : "down"}"><b>${v$(x.u)}</b></td><td class="r muted">${vR(x.u)}</td><td>${carteiraHtml(x.w)}</td><td>${fazendaHtml(x.w)}</td>
+        <td><span class="rede">${ROTULO[x.rede]}</span>${x.tx ? ` <a class="faint" href="${x.rede === "base" ? "https://basescan.org/tx/" : "https://app.roninchain.com/tx/"}${x.tx}" target="_blank" rel="noopener" title="ver transação">↗</a>` : ""}</td></tr>`).join("") || '<tr><td colspan="9" class="empty">Nenhuma negociação nesse período.</td></tr>') + "</tbody>";
+    linhas.forEach((x) => idsVistos.add(x.id));
+    return;
+  }
+  // agregados
+  const grupos = new Map();
+  for (const x of L) {
+    const chave = aba === "fazendas" ? (CART[x.w]?.[0] || null) : x.w;
+    if (!chave) continue;
+    const g = grupos.get(chave) || { chave, compra: 0, venda: 0, fc: 0, fv: 0, n: 0, ws: new Set(), w: x.w, ult: 0 };
+    if (x.k) { g.compra += x.u; g.fc += x.f; } else { g.venda += x.u; g.fv += x.f; }
+    g.n++; g.ws.add(x.w); g.ult = Math.max(g.ult, x.t); grupos.set(chave, g);
+  }
+  const L2 = ord([...grupos.values()].map((g) => ({ ...g, vol: g.compra + g.venda, liq: g.compra - g.venda, fliq: g.fc - g.fv, nw: g.ws.size })));
+  const semFaz = aba === "fazendas" ? L.filter((x) => !CART[x.w]) : [];
+  info.textContent = aba === "fazendas" ? `${num(L2.length)} fazendas negociaram · ${num(new Set(semFaz.map((x) => x.w)).size)} carteiras sem fazenda identificada ficaram de fora (${v$(semFaz.reduce((s, x) => s + x.u, 0), 0)})` : `${num(L2.length)} carteiras`;
+  el.innerHTML = cab([[aba === "fazendas" ? "chave" : "w", aba === "fazendas" ? "Fazenda" : "Carteira"], ...(aba === "carteiras" ? [["nft", "Fazenda"]] : [["nw", "Carteiras", "r"]]), ["vol", "Volume", "r"], ["compra", "Compras", "r"], ["venda", "Vendas", "r"], ["liq", "Líquido", "r"], ["fliq", "FLOWER líquido", "r"], ["n", "Negociações", "r"], ["ult", "Última"]]) + "<tbody>" +
+    (L2.slice(0, 500).map((g) => `<tr><td>${aba === "fazendas" ? fazendaHtml(g.w) : carteiraHtml(g.chave)}</td>${aba === "carteiras" ? `<td>${fazendaHtml(g.chave)}</td>` : `<td class=r>${num(g.nw)}</td>`}
+      <td class=r><b>${v$(g.vol, 0)}</b></td><td class="r up">${v$(g.compra, 0)}</td><td class="r down">${v$(g.venda, 0)}</td>
+      <td class="r ${g.liq >= 0 ? "up" : "down"}"><b>${g.liq >= 0 ? "+" : "−"}${v$(Math.abs(g.liq), 0)}</b></td><td class="r ${g.fliq >= 0 ? "up" : "down"}">${g.fliq >= 0 ? "+" : "−"}${num(Math.abs(g.fliq))}</td>
+      <td class=r>${num(g.n)}</td><td class="faint">${quando(g.ult)}</td></tr>`).join("") || '<tr><td colspan="9" class="empty">Nada nesse período.</td></tr>') + "</tbody>";
+}
+
+let chart = null;
+async function montarGrafico() {
+  const r = rede === "todas" ? "base" : rede, pool = POOLS.find((p) => p.rede === r)?.pool, el = document.getElementById("grafico");
+  const [tf, agg, lim, nome] = janela === 1 ? ["minute", 15, 96, "velas de 15 min"] : janela === 7 ? ["hour", 1, 168, "velas de 1 hora"] : ["hour", 4, 180, "velas de 4 horas"];
+  document.getElementById("g-titulo").textContent = `Preço do FLOWER na ${ROTULO[r]}`;
+  document.getElementById("g-nota").textContent = `${nome} · US$` + (rede === "todas" ? " · gráfico da Base (pool principal)" : "");
+  try {
+    const j = await gt(`/networks/${r}/pools/${pool}/ohlcv/${tf}?aggregate=${agg}&limit=${lim}&currency=usd`);
+    const l = (j.data?.attributes?.ohlcv_list || []).slice().reverse();
+    if (chart) { chart.remove(); chart = null; }
+    el.innerHTML = "";
+    chart = LightweightCharts.createChart(el, {
+      autoSize: true, layout: { background: { color: "transparent" }, textColor: cor("--muted"), fontFamily: "Inter, sans-serif" },
+      grid: { vertLines: { color: cor("--line") }, horzLines: { color: cor("--line") } },
+      rightPriceScale: { borderColor: cor("--line"), scaleMargins: { top: 0.08, bottom: 0.26 } },
+      timeScale: { borderColor: cor("--line"), timeVisible: true, secondsVisible: false },
+      localization: { locale: "pt-BR", priceFormatter: (p) => "$" + p.toFixed(4), timeFormatter: (t) => new Date(t * 1000).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) },
+      crosshair: { mode: 0 },
+    });
+    const velas = chart.addCandlestickSeries({ upColor: cor("--up"), downColor: cor("--down"), borderVisible: false, wickUpColor: cor("--up"), wickDownColor: cor("--down"), priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
+    velas.setData(l.map(([t, o, h, lo, c]) => ({ time: t, open: o, high: h, low: lo, close: c })));
+    const vol = chart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "vol" });
+    chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    vol.setData(l.map(([t, o, , , c, v]) => ({ time: t, value: v, color: c >= o ? cor("--up-soft") : cor("--down-soft") })));
+    chart.timeScale().fitContent();
+  } catch (e) {
+    if (chart) { chart.remove(); chart = null; }
+    el.innerHTML = `<div class="empty">GeckoTerminal ocupado; o gráfico tenta de novo em 20 segundos…</div>`;
+    clearTimeout(window._tg); window._tg = setTimeout(montarGrafico, 20000);
+  }
+}
+iniciar();
+</script>
 </body>
 </html>
