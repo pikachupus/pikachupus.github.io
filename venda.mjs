@@ -173,8 +173,17 @@ async function main() {
   // Arquivo diário novo -> relê os dados de todas as anunciadas.
   const all = await manifestoAll();
   if (all && all.dia > cache.dia) {
-    const nfts = new Set([...lista.keys(), ...Object.keys(cache.fazendas)]);
+    // também as fazendas das carteiras que negociam FLOWER (terminal /sfl/)
+    const arqCart = new URL("estado/sfl-carteiras.json", RAIZ), arqFaz = new URL("estado/sfl-fazendas.json", RAIZ);
+    const nftsTerminal = new Set(Object.values(fs.existsSync(arqCart) ? JSON.parse(fs.readFileSync(arqCart, "utf8")) : {}).map((c) => c.nft).filter(Boolean));
+    const nfts = new Set([...lista.keys(), ...Object.keys(cache.fazendas), ...nftsTerminal]);
     const novos = await lerArquivo(all.arquivo, nfts, M);
+    if (nftsTerminal.size) {
+      const faz = fs.existsSync(arqFaz) ? JSON.parse(fs.readFileSync(arqFaz, "utf8")) : {};
+      for (const n of nftsTerminal) if (novos[n]) faz[n] = { id: novos[n].id, nome: novos[n].nome, banida: novos[n].banida, st: novos[n].ban_status, em: Date.now() };
+      fs.writeFileSync(arqFaz, JSON.stringify(faz));
+      for (const n of nftsTerminal) if (!lista.has(n)) delete novos[n]; // não são anúncios
+    }
     for (const [nft, d] of Object.entries(novos)) {
       const ant = cache.fazendas[nft];
       // mantém a reconferência da API se for mais nova que o arquivo
