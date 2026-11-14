@@ -14,4 +14,9 @@ Dois painéis atualizados sozinhos pelo GitHub Actions, com dados do próprio jo
 - Dados: `docs/data/precos/` (situação atual e histórico por mês e categoria) e `estado/precos/` (resposta bruta de cada dia).
 - Nomes dos itens: `estado/nomes.json`, gerado da biblioteca do jogo por `ferramentas/gerar-nomes.mjs`.
 
-As duas rotinas precisam do segredo `SFL_API_KEY` (Settings > Secrets and variables > Actions).
+**Fazendas à venda** (`docs/venda.html`)
+- Rotina: `.github/workflows/venda.yml` (4 vezes por dia).
+- Coletor: `venda.mjs`. Lê os anúncios da OpenSea (coleção `sunflower-land`, Polygon) e confere cada fazenda no arquivo diário completo do jogo (`all.jsonl.gz`) e, ao longo do dia, na API do jogo (`/community/farms/{id}`): banimento, último save, level, skills e insígnias legacy, ilha, VIP, saldo e valor dos itens pelo preço do market.
+- Dados: `docs/data/venda/fazendas.json` e `estado/venda.json.gz`.
+
+Segredos (Settings > Secrets and variables > Actions): `SFL_API_KEY` (as três rotinas) e `OPENSEA_API_KEY` (fazendas à venda).
