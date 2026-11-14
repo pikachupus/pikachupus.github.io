@@ -1,0 +1,5 @@
+# Dados "ao vivo": gerados a cada rodada e publicados direto no site (não entram no repositório)
+docs/data/precos/agora.json
+docs/data/precos/flower.json
+docs/data/precos/cotacoes.json
+docs/data/venda/
