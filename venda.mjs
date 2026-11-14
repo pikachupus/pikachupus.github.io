@@ -127,6 +127,15 @@ function resumo(j, M) {
   }
   itens.sort((a, b) => b[2] - a[2]);
   const skills = Object.keys(f.bumpkin?.skills || {});
+  // NFTs (colecionáveis) e vestíveis que se vendem no market: lista completa para filtrar e somar
+  const vendaveis = [];
+  for (const [nome, q] of Object.entries(inv)) if (Number(q) > 0 && M.cat[nome] === "colecionaveis") vendaveis.push(["c", nome, Number(q)]);
+  for (const [nome, q] of Object.entries(guarda)) if (Number(q) > 0 && M.vest[nome] != null) vendaveis.push(["w", nome, Number(q)]);
+  // redes sociais e verificação facial (o rosto "duplicado" já foi usado em outra fazenda)
+  const face = f.faceRecognition?.history || [];
+  let rosto = null;
+  for (const e of face) { if (e.event === "succeeded") rosto = "ok"; else if (e.event === "failed" && rosto !== "ok") rosto = "falhou"; else if (e.event === "ownerChanged") rosto = "trocou_dono"; }
+  const duplicado = face.some((e) => e.event === "duplicate");
   return {
     id: String(j.id), nome: f.username ?? null,
     banida: j.isBlacklisted ? 1 : 0, ban_status: f.ban?.status ?? null, social: f.ban?.isSocialVerified ? 1 : 0, verificada: f.verified ? 1 : 0,
@@ -138,7 +147,10 @@ function resumo(j, M) {
     flower: sig(Number(f.balance) || 0), coins: Math.round(Number(f.coins) || 0), gems: Math.round(Number(inv.Gem) || 0),
     vestiveis: vestN, colecionaveis: Object.keys(f.collectibles || {}).reduce((s, k) => s + (f.collectibles[k]?.length || 0), 0),
     valor_nft: sig(valorNft), valor_recursos: sig(valorRecursos), valor_vestiveis: sig(valorVest), top_itens: itens.slice(0, 8),
+    vendaveis,
     captcha_falhas: soma(/Captcha Failed$/), captcha_ok: soma(/Captcha Succeeded$/),
+    discord: f.discord?.connected ? (f.discord.verified ? 2 : 1) : 0, telegram: f.telegram?.linkedAt ? 1 : 0, twitter: f.twitter?.linkedAt ? 1 : 0,
+    rosto, rosto_duplicado: duplicado ? 1 : 0,
   };
 }
 
@@ -219,8 +231,23 @@ async function main() {
     return { nft, ...a, preco: sig(a.preco), usd: c ? sig(a.preco * c.usd) : null, brl: c ? sig(a.preco * c.brl) : null, anuncios: a.n, n: undefined,
       vendedor_qtd: porVendedor[a.vendedor], ...(cache.fazendas[nft] || { sem_dados: 1 }) };
   });
+  // Itens vendáveis (NFTs e vestíveis) num dicionário único: cada fazenda guarda [índice, quantidade].
+  const dic = [], idx = new Map();
+  for (const f of fazendas) {
+    if (!f.vendaveis) continue;
+    let valor = 0;
+    f.it = f.vendaveis.map(([t, nome, q]) => {
+      const chave = t + ":" + nome;
+      if (!idx.has(chave)) { idx.set(chave, dic.length); dic.push([nome, t, t === "w" ? M.vest[nome] ?? null : M.col[nome] ?? null]); }
+      const p = dic[idx.get(chave)][2];
+      if (p != null) valor += p * q;
+      return [idx.get(chave), q];
+    });
+    f.valor_vendavel = sig(valor); // FLOWER, pelo preço atual do market
+    delete f.vendaveis; delete f.top_itens;
+  }
   fs.mkdirSync(new URL("./", SAIDA), { recursive: true });
-  fs.writeFileSync(SAIDA, JSON.stringify({ atualizado_em: new Date().toISOString(), arquivo_do_dia: cache.dia, flower_usd: M.flowerUsd, contrato: CONTRATO, cotacoes: cot, fazendas }));
+  fs.writeFileSync(SAIDA, JSON.stringify({ atualizado_em: new Date().toISOString(), arquivo_do_dia: cache.dia, flower_usd: M.flowerUsd, contrato: CONTRATO, cotacoes: cot, legacy: NOMES.legacy, itens: dic, fazendas }));
   fs.mkdirSync(new URL("./", CACHE), { recursive: true });
   fs.writeFileSync(CACHE, zlib.gzipSync(JSON.stringify(cache)));
   const ban = fazendas.filter((f) => f.banida).length, sem = fazendas.filter((f) => f.sem_dados).length;

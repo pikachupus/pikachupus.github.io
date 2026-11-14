@@ -93,13 +93,24 @@ function comColecoes(itens) {
   }
   return out;
 }
-const precoDe = (i) => i?.floor ?? i?.latestSale ?? null;
+// Preço efetivo de venda: média do que foi vendido no período (volume ÷ quantidade, ambos acumulados no
+// relatório, então a diferença entre dois dias dá o período). Sem venda no período: a última venda.
+function precoVenda(i, ant) {
+  if (!i) return null;
+  if (ant) {
+    const dv = (i.volume || 0) - (ant.volume || 0), dq = (i.quantity || 0) - (ant.quantity || 0);
+    if (dv > 0 && dq > 0) return dv / dq;
+  }
+  return i.latestSale ?? null;
+}
+const FORMATO = 2; // versão das linhas mensais (2 = com quantidade vendida no dia)
 
-// Linha diária de um item: [floor, bestOffer, latestSale, volumeDia, tradesDia, anúncios, ofertas]
+// Linha diária de um item: [floor, bestOffer, latestSale, volumeDia, tradesDia, anúncios, ofertas, quantidadeDia]
 function linha(i, ant) {
   const vol = ant ? Math.max(0, (i.volume || 0) - (ant.volume || 0)) : null;
   const tr = ant ? Math.max(0, (i.trades || 0) - (ant.trades || 0)) : null;
-  return [sig(i.floor), sig(i.bestOffer), sig(i.latestSale), sig(vol), tr, i.listingCount ?? null, i.offerCount ?? null];
+  const qt = ant ? Math.max(0, (i.quantity || 0) - (ant.quantity || 0)) : null;
+  return [sig(i.floor), sig(i.bestOffer), sig(i.latestSale), sig(vol), tr, i.listingCount ?? null, i.offerCount ?? null, sig(qt)];
 }
 
 async function main() {
@@ -136,7 +147,8 @@ async function main() {
   // 3) Arquivos por mês e categoria (só meses que mudaram, ou todos se ainda não existem).
   const meses = [...new Set(dias.map((d) => d.slice(0, 7)))];
   for (const mes of meses) {
-    if (!mesesMudados.has(mes) && fs.existsSync(new URL(`mes/${mes}/crops.json`, SAIDA))) continue;
+    const arqCrops = new URL(`mes/${mes}/crops.json`, SAIDA);
+    if (!mesesMudados.has(mes) && fs.existsSync(arqCrops) && JSON.parse(fs.readFileSync(arqCrops, "utf8")).formato === FORMATO) continue;
     const dm = dias.filter((d) => d.startsWith(mes));
     const porCat = Object.fromEntries(CATEGORIAS.map((c) => [c, {}]));
     dm.forEach((d, j) => {
@@ -147,7 +159,7 @@ async function main() {
         serie[j] = linha(i, ant?.[k] || (ant ? {} : null));
       }
     });
-    for (const c of CATEGORIAS) gravar(new URL(`mes/${mes}/${c}.json`, SAIDA), { mes, dias: dm, itens: porCat[c] });
+    for (const c of CATEGORIAS) gravar(new URL(`mes/${mes}/${c}.json`, SAIDA), { formato: FORMATO, mes, dias: dm, itens: porCat[c] });
   }
 
   // 4) Cotação diária do FLOWER em US$ e R$ (CoinGecko "flower-2", grátis, 1 ano de histórico).
@@ -175,12 +187,14 @@ async function main() {
 
   // 5) Situação atual de cada item.
   const ultimoFechado = brutos.get(dias[dias.length - 1])?.itens || {};
-  const precoEm = (k, n) => precoDe(brutos.get(somaDias(hoje, -n))?.itens?.[k]);
+  // preço efetivo de venda do dia hoje-n (média do dia; sem venda, a última venda)
+  const precoEm = (k, n) => { const d = somaDias(hoje, -n); return precoVenda(brutos.get(d)?.itens?.[k], brutos.get(somaDias(d, -1))?.itens?.[k]); };
   const itens = [];
   for (const [k, i] of Object.entries(agoraBruto.itens)) {
     if (!quem[k]) continue;
-    const p = precoDe(i);
     const ant = ultimoFechado[k];
+    const p = precoVenda(i, ant); // média do que foi vendido hoje (dia do jogo); sem venda hoje, a última venda
+    const q1 = ant ? Math.max(0, (i.quantity || 0) - (ant.quantity || 0)) : null;
     const vol7 = ant && brutos.get(somaDias(hoje, -8))?.itens?.[k] ? (i.volume || 0) - brutos.get(somaDias(hoje, -8)).itens[k].volume : null;
     const varia = (n) => { const a = precoEm(k, n); return p != null && a ? sig((p / a - 1) * 100) : null; };
     const spark = [];
@@ -189,7 +203,7 @@ async function main() {
     itens.push({
       k, n: quem[k][0], c: quem[k][1], p: sig(p), f: sig(i.floor), o: sig(i.bestOffer), s: sig(i.latestSale),
       l: i.listingCount ?? 0, q: i.offerCount ?? 0,
-      v1: ant ? sig(Math.max(0, (i.volume || 0) - (ant.volume || 0))) : null, t1: ant ? Math.max(0, (i.trades || 0) - (ant.trades || 0)) : null,
+      v1: ant ? sig(Math.max(0, (i.volume || 0) - (ant.volume || 0))) : null, t1: ant ? Math.max(0, (i.trades || 0) - (ant.trades || 0)) : null, q1: sig(q1),
       v7: vol7 == null ? null : sig(Math.max(0, vol7)), vt: sig(i.volume), ch1: varia(1), ch7: varia(7), ch30: varia(30), sp: spark,
     });
     const ult = itens[itens.length - 1];
