@@ -112,8 +112,13 @@ jobs:
           fi
           git diff --cached --quiet && exit 0
           git commit -m "historico $(date -u +%F\ %H:%M)"
-          git pull --rebase
-          git push
+          # os dados "ao vivo" alterados ficam de lado durante a sincronização (--autostash)
+          ok=0
+          for t in 1 2 3; do
+            if git pull --rebase --autostash && git push; then ok=1; break; fi
+            sleep 5
+          done
+          if [ "$ok" != "1" ]; then echo "não consegui salvar o histórico"; exit 1; fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
