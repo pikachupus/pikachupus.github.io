@@ -7,7 +7,8 @@
 //
 // Saída (lida por docs/precos.html):
 //   docs/data/precos/agora.json               situação atual de cada item (+ variação e mini-gráfico)
-//   docs/data/precos/flower.json              preço do FLOWER em dólar por dia (acumulado desde que a coleta começou)
+//   docs/data/precos/cotacoes.json            FLOWER em US$ e R$ por dia (CoinGecko) + hoje (cotação do jogo)
+//   estado/precos-cotacoes.json               cotações dos dias fechados (guardadas)
 //   docs/data/precos/mes/AAAA-MM/{cat}.json   histórico diário por mês e categoria (só dias fechados)
 //   estado/precos/AAAA-MM-DD.json.gz          resposta bruta de cada dia (pra reconstruir tudo)
 //   estado/nomes.json                         id -> nome (gerado da biblioteca do jogo, ferramentas/gerar-nomes.mjs)
@@ -18,7 +19,7 @@ import fs from "node:fs";
 import zlib from "node:zlib";
 
 const API = "https://api.sunflower-land.com";
-const INICIO = process.env.PRECOS_INICIO || "2025-12-01"; // o market do jogo tem relatório desde dez/2025 (dias vazios são pulados)
+const INICIO = process.env.PRECOS_INICIO || "2025-12-10"; // primeiro dia com relatório do market no jogo
 const ESPERA_MS = 5200; // a API aceita ~1 consulta a cada 5 s
 const RAIZ = new URL("./", import.meta.url);
 const BRUTO = new URL("estado/precos/", RAIZ);
@@ -149,12 +150,28 @@ async function main() {
     for (const c of CATEGORIAS) gravar(new URL(`mes/${mes}/${c}.json`, SAIDA), { mes, dias: dm, itens: porCat[c] });
   }
 
-  // 4) Preço do FLOWER em dólar: a API só dá o valor atual (igual para qualquer data), então guardamos
-  //    o de cada dia daqui pra frente (o último valor do dia fica).
-  const arqFlower = new URL("flower.json", SAIDA);
-  const flower = fs.existsSync(arqFlower) ? JSON.parse(fs.readFileSync(arqFlower, "utf8")).filter((x) => x[0] !== hoje) : [];
-  if (agoraBruto.flower != null) flower.push([hoje, sig(agoraBruto.flower)]);
-  gravar(arqFlower, flower);
+  // 4) Cotação diária do FLOWER em US$ e R$ (CoinGecko "flower-2", grátis, 1 ano de histórico).
+  //    Os dias fechados ficam guardados em estado/ para o histórico não depender desse limite.
+  const arqCot = new URL("estado/precos-cotacoes.json", RAIZ);
+  const cot = fs.existsSync(arqCot) ? JSON.parse(fs.readFileSync(arqCot, "utf8")) : {};
+  const cotAntes = JSON.stringify(cot);
+  for (const moeda of ["usd", "brl"]) {
+    try {
+      const r = await fetch(`https://api.coingecko.com/api/v3/coins/flower-2/market_chart?vs_currency=${moeda}&days=365&interval=daily`);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      for (const [t, v] of (await r.json()).prices || []) {
+        const d = diaUTC(new Date(t - 1)); // ponto da meia-noite = fechamento do dia anterior
+        if (d < hoje && v) (cot[d] ||= {})[moeda] = sig(v);
+      }
+    } catch (e) { console.log(`cotação ${moeda}: ${e.message} (mantém o histórico guardado)`); }
+    await dormir(2500);
+  }
+  if (JSON.stringify(cot) !== cotAntes) gravar(arqCot, Object.fromEntries(Object.entries(cot).sort()));
+  const ultimaCot = Object.entries(cot).sort().pop()?.[1] || {};
+  const brlPorUsd = ultimaCot.usd && ultimaCot.brl ? ultimaCot.brl / ultimaCot.usd : null;
+  const cotacoes = Object.entries(cot).sort().filter(([d]) => d >= (dias[0] || hoje)).map(([d, v]) => [d, v.usd ?? null, v.brl ?? null]);
+  if (agoraBruto.flower != null) cotacoes.push([hoje, sig(agoraBruto.flower), brlPorUsd ? sig(agoraBruto.flower * brlPorUsd) : null]);
+  gravar(new URL("cotacoes.json", SAIDA), cotacoes);
 
   // 5) Situação atual de cada item.
   const ultimoFechado = brutos.get(dias[dias.length - 1])?.itens || {};
@@ -184,7 +201,7 @@ async function main() {
   itens.sort((a, b) => (b.v7 || 0) - (a.v7 || 0));
   const totAnt = brutos.get(dias[dias.length - 1])?.totais;
   gravar(new URL("agora.json", SAIDA), {
-    atualizado_em: agoraBruto.buscado_em, dia: hoje, primeiro_dia: dias[0], flower: sig(agoraBruto.flower),
+    atualizado_em: agoraBruto.buscado_em, dia: hoje, primeiro_dia: dias[0], flower: sig(agoraBruto.flower), flower_brl: brlPorUsd ? sig(agoraBruto.flower * brlPorUsd) : null,
     volume_hoje: totAnt && agoraBruto.totais ? sig(agoraBruto.totais.volume - totAnt.volume) : null,
     trades_hoje: totAnt && agoraBruto.totais ? agoraBruto.totais.trades - totAnt.trades : null,
     itens,

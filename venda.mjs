@@ -9,7 +9,7 @@
 // Valor dos itens = quantidade x preço atual do market (docs/data/precos/agora.json, do precos.mjs).
 //
 // Saída: docs/data/venda/fazendas.json (lida por docs/venda.html) e estado/venda.json.gz (cache).
-// Uso: SFL_API_KEY=sfl.xxx OPENSEA_API_KEY=xxx node venda.mjs   (opcional VENDA_CHECAR=200)
+// Uso: SFL_API_KEY=sfl.xxx OPENSEA_API_KEY=xxx node venda.mjs   (opcional VENDA_CHECAR=60)
 
 import fs from "node:fs";
 import zlib from "node:zlib";
@@ -20,7 +20,7 @@ const API = "https://api.sunflower-land.com";
 const ARQUIVOS = "https://community.sunflower-land.com";
 const COLECAO = "sunflower-land";
 const CONTRATO = "0x2b4a66557a79263275826ad31a4cddc2789334bd";
-const CHECAR = Number(process.env.VENDA_CHECAR || 200); // reconferências pela API por rodada (~5 s cada)
+const CHECAR = Number(process.env.VENDA_CHECAR || 60); // reconferências pela API por rodada (~5 s cada; 60/h = todas as anunciadas por dia)
 const RAIZ = new URL("./", import.meta.url);
 const CACHE = new URL("estado/venda.json.gz", RAIZ);
 const SAIDA = new URL("docs/data/venda/fazendas.json", RAIZ);
@@ -182,6 +182,9 @@ async function main() {
       cache.fazendas[nft] = d;
     }
     cache.dia = all.dia;
+    // marca o dia relido: a rotina só salva o cache no repositório quando este arquivo muda (1x por dia)
+    fs.mkdirSync(new URL("estado/", RAIZ), { recursive: true });
+    fs.writeFileSync(new URL("estado/venda-dia.txt", RAIZ), all.dia + "\n");
   }
   // Só guarda o que ainda está anunciado.
   for (const nft of Object.keys(cache.fazendas)) if (!lista.has(nft)) delete cache.fazendas[nft];
