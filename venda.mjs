@@ -13,7 +13,6 @@
 
 import fs from "node:fs";
 import zlib from "node:zlib";
-import { createInterface } from "node:readline";
 import { Readable } from "node:stream";
 
 const API = "https://api.sunflower-land.com";
@@ -163,7 +162,14 @@ async function manifestoAll() {
 async function lerArquivo(arquivo, nfts, M) {
   const res = await fetch(`${ARQUIVOS}/${arquivo}`);
   if (!res.ok) throw new Error(`${arquivo}: HTTP ${res.status}`);
-  const linhas = createInterface({ input: Readable.fromWeb(res.body).pipe(zlib.createGunzip()), crlfDelay: Infinity });
+  // linhas lidas no ritmo do processamento (o readline do Node 22 deixa o arquivo inteiro acumular na memória)
+  async function* linhasDe(fluxo) {
+    fluxo.setEncoding("utf8");
+    let resto = "";
+    for await (const pedaco of fluxo) { const p = (resto + pedaco).split("\n"); resto = p.pop(); for (const l of p) yield l; }
+    if (resto) yield resto;
+  }
+  const linhas = linhasDe(Readable.fromWeb(res.body).pipe(zlib.createGunzip()));
   const achadas = {};
   let lidas = 0;
   for await (const l of linhas) {

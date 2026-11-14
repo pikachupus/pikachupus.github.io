@@ -17,7 +17,6 @@
 
 import fs from "node:fs";
 import zlib from "node:zlib";
-import { createInterface } from "node:readline";
 import { Readable } from "node:stream";
 
 const API = "https://api.sunflower-land.com";
@@ -62,17 +61,30 @@ function detalhes(j) {
   };
 }
 
+// Linhas de um fluxo de texto, respeitando o ritmo de quem consome (o readline do Node 22 não segura
+// o download e o arquivo descomprimido, de vários GB, acaba todo na memória).
+async function* linhasDe(fluxo) {
+  fluxo.setEncoding("utf8");
+  let resto = "";
+  for await (const pedaco of fluxo) {
+    const partes = (resto + pedaco).split("\n");
+    resto = partes.pop();
+    for (const l of partes) yield l;
+  }
+  if (resto) yield resto;
+}
+
 // Lê o arquivo em streaming; só decodifica as linhas banidas.
 async function lerArquivo(arquivo) {
   const res = await fetch(`${ARQUIVOS}/${arquivo}`);
   if (res.status === 403) return null; // expirou (só ficam 7 dias)
   if (!res.ok) throw new Error(`${arquivo}: HTTP ${res.status}`);
-  const linhas = createInterface({ input: Readable.fromWeb(res.body).pipe(zlib.createGunzip()), crlfDelay: Infinity });
   const presentes = new Set(), banidas = new Map();
-  for await (const l of linhas) {
+  for await (const l of linhasDe(Readable.fromWeb(res.body).pipe(zlib.createGunzip()))) {
     if (!l) continue;
     const m = /^\{"id":(\d+)/.exec(l);
-    const id = m ? m[1] : String(JSON.parse(l).id);
+    // cópia independente do id: o pedaço tirado da linha prende a linha inteira (até ~0,5 MB) na memória
+    const id = m ? Buffer.from(m[1], "latin1").toString("latin1") : String(JSON.parse(l).id);
     presentes.add(id);
     if (l.slice(-200).includes('"isBlacklisted":true')) banidas.set(id, detalhes(JSON.parse(l)));
   }
