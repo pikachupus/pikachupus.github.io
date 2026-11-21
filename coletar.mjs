@@ -79,6 +79,11 @@ async function* linhasDe(fluxo) {
 // (o nome do ticket vem de estado/ranking-ticket.txt, gravado pelo ranking.mjs).
 const TICKET = (() => { try { return fs.readFileSync(new URL("./estado/ranking-ticket.txt", import.meta.url), "utf8").trim(); } catch { return ""; } })();
 const CHAVE_TICKET = TICKET ? `"${TICKET} Collected":` : null;
+// "e se" de XP (comida no inventário + bônus), com as funções do próprio jogo
+// (opcional: se a biblioteca do jogo falhar ao carregar, as banidas e o ranking seguem sem essas colunas)
+const xpDaFazenda = await import("./xp.mjs").then((m) => m.xpDaFazenda, (e) => { console.log("XP do ranking desligado:", e.message); return () => null; });
+const AGORA = Date.now();
+const BONUS = new Map(); // nome do bônus -> índice no completo.json
 
 async function lerArquivo(arquivo) {
   const res = await fetch(`${ARQUIVOS}/${arquivo}`);
@@ -96,18 +101,25 @@ async function lerArquivo(arquivo) {
     if (CHAVE_TICKET && !banida && l.includes(CHAVE_TICKET)) {
       const f = JSON.parse(l).farm || {};
       const n = Number(f.farmActivity?.[`${TICKET} Collected`]) || 0;
-      if (n > 0) ranking.push([f.username || "", Number(id), n, Math.round(Number(f.bumpkin?.experience) || 0)]);
+      if (n > 0) {
+        let x = null;
+        try { x = xpDaFazenda(f, AGORA); } catch {}
+        const asc = Number(f.island?.ascensionLevel) || 0;
+        const bonus = (x?.bonus || []).map((b) => { if (!BONUS.has(b)) BONUS.set(b, BONUS.size); return BONUS.get(b); });
+        ranking.push([f.username || "", Number(id), n, Math.round(Number(f.bumpkin?.experience) || 0), asc, x?.nivel ?? null, x?.potencial ?? null, bonus]);
+      }
     }
   }
   return { presentes, banidas, ranking };
 }
 
-// ranking completo: tickets coletados, desempate por XP (a ascensão não vem nos dados públicos)
+// ranking completo: tickets coletados; desempate como no jogo (ascensão, depois XP).
+// Cada linha: [nome, farmId, tickets, xp, ascensão, nível, xp da comida do inventário, [índices de bônus]]
 function gravarRanking(dia, ranking) {
   if (!ranking.length) return;
-  ranking.sort((a, b) => b[2] - a[2] || b[3] - a[3]);
+  ranking.sort((a, b) => b[2] - a[2] || b[4] - a[4] || b[3] - a[3]);
   fs.mkdirSync(new URL("./ranking/", DADOS), { recursive: true });
-  gravarJson(new URL("./ranking/completo.json", DADOS), { dia, ticket: TICKET, lista: ranking });
+  gravarJson(new URL("./ranking/completo.json", DADOS), { dia, ticket: TICKET, bonus: [...BONUS.keys()], lista: ranking });
   console.log(`${dia}: ranking completo com ${ranking.length} jogadores (${TICKET})`);
 }
 
