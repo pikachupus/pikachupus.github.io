@@ -47,8 +47,17 @@ jobs:
             docs/data/venda/fazendas.json
             docs/data/sfl/trades.json
             docs/data/sfl/carteiras.json
+            docs/data/ranking/oficial.json
+            docs/data/ranking/completo.json
           key: vivo-${{ github.run_id }}
           restore-keys: vivo-
+
+      - name: Ranking da temporada
+        id: ranking
+        continue-on-error: true
+        run: node ranking.mjs
+        env:
+          SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
 
       - name: Banidas
         id: banidas
@@ -95,6 +104,8 @@ jobs:
             docs/data/venda/fazendas.json
             docs/data/sfl/trades.json
             docs/data/sfl/carteiras.json
+            docs/data/ranking/oficial.json
+            docs/data/ranking/completo.json
           key: vivo-${{ github.run_id }}
 
       - name: Salvar o historico no repositorio
@@ -102,8 +113,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # dados "ao vivo" não ficam no repositório (vão só para o site)
-          git rm -r -q --cached --ignore-unmatch docs/data/precos/agora.json docs/data/precos/flower.json docs/data/precos/cotacoes.json docs/data/venda docs/data/sfl
-          for p in docs/data/dias.json docs/data/novas estado/ultimo.json.gz estado/precos estado/precos-cotacoes.json docs/data/precos/mes .gitignore; do
+          git rm -r -q --cached --ignore-unmatch docs/data/precos/agora.json docs/data/precos/flower.json docs/data/precos/cotacoes.json docs/data/venda docs/data/sfl docs/data/ranking
+          for p in docs/data/dias.json docs/data/novas estado/ultimo.json.gz estado/precos estado/precos-cotacoes.json estado/ranking-ticket.txt docs/data/precos/mes .gitignore; do
             if [ -e "$p" ]; then git add "$p"; fi
           done
           # caches das fazendas e do terminal: só 1x por dia (no dia em que o arquivo do jogo foi relido)
@@ -131,7 +142,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Conferir se alguma parte falhou
-        if: steps.banidas.outcome == 'failure' || steps.precos.outcome == 'failure' || steps.venda.outcome == 'failure' || steps.sfl.outcome == 'failure'
+        if: steps.ranking.outcome == 'failure' || steps.banidas.outcome == 'failure' || steps.precos.outcome == 'failure' || steps.venda.outcome == 'failure' || steps.sfl.outcome == 'failure'
         run: |
-          echo "banidas: ${{ steps.banidas.outcome }} | precos: ${{ steps.precos.outcome }} | fazendas: ${{ steps.venda.outcome }} | terminal: ${{ steps.sfl.outcome }}"
+          echo "ranking: ${{ steps.ranking.outcome }} | banidas: ${{ steps.banidas.outcome }} | precos: ${{ steps.precos.outcome }} | fazendas: ${{ steps.venda.outcome }} | terminal: ${{ steps.sfl.outcome }}"
           exit 1
