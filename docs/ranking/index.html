@@ -8,13 +8,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root { --bg:#0a0d13; --card:#131823; --card2:#181e2b; --line:#232b3a; --text:#eef1f6; --muted:#8d97a8; --faint:#5d6778;
-    --c:#f2b34a; --c-soft:rgba(242,179,74,.14); --sel:#f6f7f9; --sel-text:#0a0d13; --shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.25); }
+    --c:#f2b34a; --c-soft:rgba(242,179,74,.14); --ok:#2fc98a; --ok-soft:rgba(47,201,138,.14); --no:#f0505c; --no-soft:rgba(240,80,92,.14);
+    --nft:#a77bf3; --wear:#5b8def; --skill:#2fc98a; --outro:#8d97a8;
+    --sel:#f6f7f9; --sel-text:#0a0d13; --shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.25); }
   body.light { --bg:#f3f5f8; --card:#fff; --card2:#f7f8fa; --line:#e2e6ec; --text:#141821; --muted:#5e6776; --faint:#8b94a3;
-    --c:#b7790f; --c-soft:rgba(183,121,15,.10); --sel:#141821; --sel-text:#fff; --shadow:0 1px 2px rgba(16,24,40,.05), 0 6px 18px rgba(16,24,40,.05); }
+    --c:#b7790f; --c-soft:rgba(183,121,15,.10); --ok:#128a5c; --ok-soft:rgba(18,138,92,.10); --no:#d93644; --no-soft:rgba(217,54,68,.10);
+    --nft:#7b4fd6; --wear:#2f6fdb; --skill:#128a5c; --outro:#5e6776;
+    --sel:#141821; --sel-text:#fff; --shadow:0 1px 2px rgba(16,24,40,.05), 0 6px 18px rgba(16,24,40,.05); }
   * { box-sizing:border-box; }
   body { margin:0; min-height:100vh; color:var(--text); font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:14px;
     background:radial-gradient(1100px 460px at 15% -10%, var(--c-soft), transparent 60%), var(--bg); }
-  .wrap { max-width:980px; margin:0 auto; padding:24px 16px 48px; display:grid; gap:18px; }
+  .wrap { max-width:1320px; margin:0 auto; padding:24px 16px 48px; display:grid; gap:18px; }
   header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
   .logo { width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:var(--c-soft); font-size:22px; }
   h1 { margin:0; font-size:22px; font-weight:800; letter-spacing:-.02em; }
@@ -28,20 +32,31 @@
   .seg { display:inline-flex; background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:4px; gap:2px; }
   .seg button { border:0; background:transparent; color:var(--muted); font:inherit; font-weight:600; font-size:13px; padding:7px 14px; border-radius:9px; cursor:pointer; }
   .seg button.on { background:var(--sel); color:var(--sel-text); }
-  input[type=search] { flex:1; min-width:180px; background:var(--card2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:9px 12px; font:inherit; }
-  .nota { color:var(--muted); font-size:12.5px; line-height:1.55; margin:0 0 12px; }
+  input[type=search], input.eu { background:var(--card2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:9px 12px; font:inherit; }
+  input[type=search] { flex:1; min-width:180px; }
+  input.eu { width:190px; }
+  .nota { color:var(--muted); font-size:12.5px; line-height:1.55; margin:0 0 8px; }
   .nota b { color:var(--text); }
+  .legenda { display:flex; gap:12px; flex-wrap:wrap; color:var(--muted); font-size:12px; margin:0 0 12px; }
   .scroll { overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; }
-  th { text-align:left; font-size:11.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
-  td { padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  table { width:100%; min-width:1400px; border-collapse:collapse; }
+  th { text-align:left; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:9px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:8px; border-bottom:1px solid var(--line); white-space:nowrap; font-variant-numeric:tabular-nums; vertical-align:middle; }
   tbody tr:hover td { background:var(--card2); }
+  tr.eu td { background:var(--c-soft) !important; }
   .r { text-align:right; }
-  .pos { color:var(--faint); font-weight:700; width:56px; }
+  .pos { color:var(--faint); font-weight:700; width:48px; }
   .pos.top3 { color:var(--c); }
   .nome { font-weight:600; }
-  .fid { color:var(--muted); }
+  .fid, .fraco { color:var(--muted); }
   .tk { color:var(--c); font-weight:700; }
+  .pot { color:var(--ok); }
+  td.bonus { white-space:normal; min-width:560px; line-height:1.8; }
+  .chip { display:inline-block; font-size:10.5px; font-weight:600; padding:0 6px; border-radius:999px; margin:0 3px 0 0; white-space:nowrap;
+    color:var(--k); background:color-mix(in srgb, var(--k) 14%, transparent); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--k); margin-right:5px; }
+  .vs { font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .vs.ok { color:var(--ok); background:var(--ok-soft); } .vs.no { color:var(--no); background:var(--no-soft); } .vs.neutro { color:var(--muted); background:var(--card2); }
   .mais { margin-top:12px; text-align:center; }
   .mais button { border:1px solid var(--line); background:var(--card2); color:var(--text); font:inherit; font-weight:600; padding:8px 16px; border-radius:10px; cursor:pointer; }
   .vazio { color:var(--muted); padding:24px 4px; text-align:center; }
@@ -68,13 +83,21 @@
         <button id="b-co" onclick="aba('completo')">Ranking completo</button>
       </div>
       <input type="search" id="busca" placeholder="Buscar jogador ou Farm ID" oninput="desenhar()" />
+      <input class="eu" id="eu" inputmode="numeric" placeholder="Sua fazenda (Farm ID)" title="Compara o seu XP possível com o de cada jogador" oninput="trocarEu()" />
     </div>
     <p class="nota" id="nota"></p>
+    <div class="legenda">
+      <span><span class="dot" style="--k:var(--nft)"></span>NFT</span>
+      <span><span class="dot" style="--k:var(--wear)"></span>Vestível</span>
+      <span><span class="dot" style="--k:var(--skill)"></span>Skill</span>
+      <span><span class="dot" style="--k:var(--outro)"></span>Outros (VIP, pet da facção, bud)</span>
+      <span id="leg-vs"></span>
+    </div>
     <div class="scroll"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
     <div class="mais" id="mais"></div>
   </div>
 
-  <footer>Fonte: Community API e arquivo diário oficial do Sunflower Land. O top 50 atualiza de hora em hora; o ranking completo, uma vez por dia (~22h UTC). Não é um site oficial do jogo.</footer>
+  <footer>Fonte: Community API e arquivo diário oficial do Sunflower Land. O top 50 atualiza de hora em hora; XP da comida, bônus e o ranking completo, uma vez por dia (~22h UTC). O XP da comida usa as mesmas contas de bônus do jogo. Não é um site oficial do jogo.</footer>
 </div>
 <script>
 let tema = "dark"; try { tema = localStorage.getItem("sfl_ban_tema") || "dark"; } catch {}
@@ -83,28 +106,79 @@ function trocarTema() { tema = tema === "light" ? "dark" : "light"; document.bod
 
 const $ = (id) => document.getElementById(id);
 const j = (u) => fetch(u + "?v=" + Math.floor(Date.now() / 3e5)).then((r) => r.ok ? r.json() : null).catch(() => null);
-const int = (v) => Number(v).toLocaleString("pt-BR");
+const int = (v) => v == null ? "—" : Math.round(Number(v)).toLocaleString("pt-BR");
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-function xp(v) {
-  v = Number(v) || 0;
-  if (v >= 1e9) return (v / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + " bi";
-  if (v >= 1e6) return (v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mi";
-  if (v >= 1e3) return (v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " mil";
-  return int(Math.round(v));
-}
 function ha(ms) {
   const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
   if (m < 60) return `há ${m} min`;
   const h = Math.round(m / 60); return h < 48 ? `há ${h} h` : `há ${Math.round(h / 24)} dias`;
 }
 
-let OF = null, CO = null, modo = "oficial", limite = 100;
-try { if (localStorage.getItem("sfl_ranking_aba") === "completo") modo = "completo"; } catch {}
+// tipo de cada bônus de XP de comida (nomes do código do jogo)
+const TIPO = {
+  "Blossombeard": "nft", "Observatory": "nft", "Grain Grinder": "nft", "Giant Truffle": "nft", "Skill Shrimpy": "nft",
+  "Hungry Hare": "nft", "Astrolabe": "nft", "Swiss Whiskers": "nft",
+  "Golden Spatula": "wear", "Pan": "wear", "Luminous Anglerfish Topper": "wear",
+  "Munching Mastery": "skill", "Juicy Boost": "skill", "Drive-Through Deli": "skill", "Buzzworthy Treats": "skill", "Fishy Feast": "skill",
+};
+const ORDEM = { nft: 0, wear: 1, skill: 2, outro: 3 };
+const COR = { nft: "var(--nft)", wear: "var(--wear)", skill: "var(--skill)", outro: "var(--outro)" };
+const NOME_CURTO = { "VIP Access": "VIP", "Faction Pet": "Pet da facção", "Luminous Anglerfish Topper": "Luminous Anglerfish" };
 
-function aba(m) {
-  modo = m; limite = 100;
-  try { localStorage.setItem("sfl_ranking_aba", m); } catch {}
-  desenhar();
+let OF = null, CO = null, POR_ID = new Map(), modo = "oficial", limite = 100, EU = null;
+try { if (localStorage.getItem("sfl_ranking_aba") === "completo") modo = "completo"; } catch {}
+try { $("eu").value = localStorage.getItem("sfl_ranking_eu") || ""; } catch {}
+
+function aba(m) { modo = m; limite = 100; try { localStorage.setItem("sfl_ranking_aba", m); } catch {} desenhar(); }
+function trocarEu() {
+  const v = $("eu").value.replace(/\D/g, "");
+  try { localStorage.setItem("sfl_ranking_eu", v); } catch {}
+  achaEu(); desenhar();
+}
+function achaEu() {
+  const v = $("eu").value.replace(/\D/g, "");
+  const c = v && POR_ID.get(v);
+  // tkCo = tickets no arquivo diário (aba completa); tkOf = tickets oficiais (só se estiver no top 50)
+  EU = c ? { id: v, nome: c[0], tkCo: c[2], tkOf: null, xp: c[3], asc: c[4], pot: c[6] || 0 } : null;
+  const o = v && OF?.top.find((x) => String(x[1]) === v);
+  if (EU && o) { EU.tkOf = o[2]; EU.xp = Math.max(EU.xp, o[3]); }
+  $("leg-vs").innerHTML = EU ? `· Comparando com <b>${esc(EU.nome)}</b>: seu XP possível ${int(EU.xp + EU.pot)}` : (v ? "· Farm ID não encontrado no ranking completo" : "");
+}
+
+function bonusHtml(idx) {
+  if (!idx || !CO?.bonus) return '<span class="fraco">—</span>';
+  const nomes = idx.map((i) => CO.bonus[i]).filter(Boolean)
+    .map((n) => ({ n, t: TIPO[n] || "outro" }))
+    .sort((a, b) => ORDEM[a.t] - ORDEM[b.t] || a.n.localeCompare(b.n));
+  if (!nomes.length) return '<span class="fraco">nenhum</span>';
+  return nomes.map(({ n, t }) => `<span class="chip" style="--k:${COR[t]}" title="${esc(n)}">${esc(NOME_CURTO[n] || n)}</span>`).join("");
+}
+
+// "e se": você comendo tudo passa o XP atual dele? (só decide quando os tickets e a ascensão empatam)
+function vsHtml(fid, tk, asc, xp, pot) {
+  if (!EU) return "";
+  if (String(fid) === EU.id) return '<span class="vs neutro">você</span>';
+  // compara tickets só da mesma fonte (oficial com oficial, arquivo diário com arquivo diário)
+  const meuTk = modo === "oficial" ? EU.tkOf : EU.tkCo;
+  if (meuTk != null && tk !== meuTk) return `<span class="vs neutro" title="O XP só desempata com os mesmos tickets">${tk > meuTk ? "+" : "−"}${int(Math.abs(tk - meuTk))} tickets</span>`;
+  if (asc != null && EU.asc != null && asc !== EU.asc) return `<span class="vs ${EU.asc > asc ? "ok" : "no"}" title="Com os mesmos tickets, a ascensão vem antes do XP">${EU.asc > asc ? "já passa (ascensão)" : "ascensão maior"}</span>`;
+  const meu = EU.xp + EU.pot, dif = meu - xp;
+  if (EU.xp > xp) return `<span class="vs ok" title="Seu XP atual já é maior">já passa</span>`;
+  if (dif > 0) {
+    const garante = meu > xp + (pot || 0);
+    return `<span class="vs ok" title="${garante ? "Passa mesmo se ele comer tudo também" : "Passa o XP atual dele; se ele comer tudo também, não"}">passa${garante ? "" : "*"} +${int(dif)}</span>`;
+  }
+  return `<span class="vs no" title="Mesmo comendo tudo, faltam ${int(-dif)} XP">não passa −${int(-dif)}</span>`;
+}
+
+function linha(p, nome, fid, tk, asc, nivel, xp, pot, bonus) {
+  const ascTxt = asc == null ? "—" : `A${asc}${nivel != null ? " L" + nivel : ""}`;
+  const eu = EU && String(fid) === EU.id ? ' class="eu"' : "";
+  return `<tr${eu}><td class="pos${p <= 3 ? " top3" : ""}">${p}º</td><td class="nome">${esc(nome) || "<span class='fraco'>sem nome</span>"}</td><td class="fid">${fid}</td>` +
+    `<td class="r tk">${int(tk)}</td><td class="r">${ascTxt}</td><td class="r">${int(xp)}</td>` +
+    `<td class="r pot">${pot == null ? "—" : "+" + int(pot)}</td><td class="r"><b>${pot == null ? "—" : int(xp + pot)}</b></td>` +
+    (EU ? `<td class="r">${vsHtml(fid, tk, asc, xp, pot)}</td>` : "") +
+    `<td class="bonus">${bonusHtml(bonus)}</td></tr>`;
 }
 
 function desenhar() {
@@ -112,35 +186,41 @@ function desenhar() {
   $("b-co").classList.toggle("on", modo === "completo");
   const q = $("busca").value.trim().toLowerCase();
   const casa = (nome, fid) => !q || String(nome).toLowerCase().includes(q) || String(fid).includes(q);
-  const tk = esc((OF && OF.ticket) || (CO && CO.ticket) || "tickets");
+  const tk = esc((OF && OF.ticket) || (CO && CO.ticket) || "Tickets");
+  const diaCo = CO ? CO.dia.split("-").reverse().join("/") : null;
+  $("th").innerHTML = `<tr><th>#</th><th>Jogador</th><th>Farm ID</th><th class="r">${tk}</th><th class="r">Ascensão</th><th class="r">XP</th>` +
+    `<th class="r" title="XP de toda a comida do inventário, com os bônus da fazenda">+ Comida</th><th class="r" title="XP + comida">XP possível</th>` +
+    (EU ? `<th class="r">Você x ele</th>` : "") + `<th>Bônus de XP de comida</th></tr>`;
   let linhas = [], html = "";
 
   if (modo === "oficial") {
     $("nota").innerHTML = OF
-      ? `Ranking oficial do jogo, atualizado ${ha(OF.atualizado)}. Empate em ${tk}: vence a <b>maior ascensão</b> e, depois, o <b>maior XP</b>.`
+      ? `Ranking oficial do jogo, atualizado ${ha(OF.atualizado)}. Empate em ${tk}: vence a <b>maior ascensão</b> e, depois, o <b>maior XP</b>.` +
+        (CO ? ` "+ Comida", nível e bônus vêm do arquivo diário de ${diaCo}.` : "")
       : "O ranking oficial ainda não foi coletado.";
-    $("th").innerHTML = `<tr><th>#</th><th>Jogador</th><th>Farm ID</th><th class="r">${tk}</th><th class="r">Ascensão</th><th class="r">XP</th></tr>`;
     linhas = (OF?.top || []).map((x, i) => [i + 1, ...x]).filter((x) => casa(x[1], x[2]));
-    html = linhas.map(([p, nome, fid, n, x, asc]) =>
-      `<tr><td class="pos${p <= 3 ? " top3" : ""}">${p}º</td><td class="nome">${esc(nome)}</td><td class="fid">${fid}</td><td class="r tk">${int(n)}</td><td class="r">${asc == null ? "—" : "A" + asc}</td><td class="r" title="${int(Math.round(x))} XP">${xp(x)}</td></tr>`).join("");
+    html = linhas.map(([p, nome, fid, n, xp, asc]) => {
+      const c = POR_ID.get(String(fid));
+      return linha(p, nome, fid, n, asc, c ? c[5] : null, xp, c ? c[6] : null, c ? c[7] : null);
+    }).join("");
     $("mais").innerHTML = "";
   } else {
     $("nota").innerHTML = CO
-      ? `Todos os ${int(CO.lista.length)} jogadores com ${tk} no arquivo diário de ${CO.dia.split("-").reverse().join("/")}. <b>Posição estimada</b>: o arquivo é do fim do dia anterior e o contador da fazenda não inclui alguns bônus, então os números ficam abaixo do ranking oficial (cerca de 200 a 300). A ascensão não vem nos dados públicos, por isso o desempate aqui é só pelo XP.`
+      ? `Todos os ${int(CO.lista.length)} jogadores com ${tk} no arquivo diário de ${diaCo}. <b>Posição estimada</b>: o arquivo é do fim do dia anterior e o contador da fazenda não inclui alguns bônus, então os tickets ficam abaixo do oficial (cerca de 200 a 300). Desempate igual ao jogo: ascensão, depois XP.`
       : "O ranking completo sai junto com o próximo arquivo diário do jogo (~22h UTC).";
-    $("th").innerHTML = `<tr><th>#</th><th>Jogador</th><th>Farm ID</th><th class="r">${tk} coletados</th><th class="r">XP</th></tr>`;
     linhas = (CO?.lista || []).map((x, i) => [i + 1, ...x]).filter((x) => casa(x[1], x[2]));
-    html = linhas.slice(0, limite).map(([p, nome, fid, n, x]) =>
-      `<tr><td class="pos${p <= 3 ? " top3" : ""}">${p}º</td><td class="nome">${esc(nome) || "<span class='fid'>sem nome</span>"}</td><td class="fid">${fid}</td><td class="r tk">${int(n)}</td><td class="r" title="${int(x)} XP">${xp(x)}</td></tr>`).join("");
+    html = linhas.slice(0, limite).map(([p, nome, fid, n, xp, asc, nivel, pot, bonus]) => linha(p, nome, fid, n, asc ?? null, nivel ?? null, xp, pot ?? null, bonus)).join("");
     $("mais").innerHTML = linhas.length > limite ? `<button onclick="limite+=200;desenhar()">Mostrar mais (${int(linhas.length - limite)} restantes)</button>` : "";
   }
-  $("tb").innerHTML = html || `<tr><td colspan="6" class="vazio">${q ? "Ninguém encontrado." : "Sem dados ainda."}</td></tr>`;
+  $("tb").innerHTML = html || `<tr><td colspan="11" class="vazio">${q ? "Ninguém encontrado." : "Sem dados ainda."}</td></tr>`;
 }
 
 Promise.all([j("../data/ranking/oficial.json"), j("../data/ranking/completo.json")]).then(([o, c]) => {
   OF = o; CO = c;
+  POR_ID = new Map((c?.lista || []).map((x) => [String(x[1]), x]));
   const tk = (o && o.ticket) || (c && c.ticket);
   $("sub").textContent = tk ? `Ticket do capítulo: ${tk}` + (o?.total ? ` · ${int(o.total)} coletados por todos os jogadores` : "") : "Ranking de tickets do capítulo";
+  achaEu();
   desenhar();
 });
 </script>
