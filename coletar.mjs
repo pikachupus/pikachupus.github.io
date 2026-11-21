@@ -75,20 +75,40 @@ async function* linhasDe(fluxo) {
 }
 
 // Lê o arquivo em streaming; só decodifica as linhas banidas.
+// Também monta o ranking completo da temporada: quem tem "<ticket> Collected" no farmActivity
+// (o nome do ticket vem de estado/ranking-ticket.txt, gravado pelo ranking.mjs).
+const TICKET = (() => { try { return fs.readFileSync(new URL("./estado/ranking-ticket.txt", import.meta.url), "utf8").trim(); } catch { return ""; } })();
+const CHAVE_TICKET = TICKET ? `"${TICKET} Collected":` : null;
+
 async function lerArquivo(arquivo) {
   const res = await fetch(`${ARQUIVOS}/${arquivo}`);
   if (res.status === 403) return null; // expirou (só ficam 7 dias)
   if (!res.ok) throw new Error(`${arquivo}: HTTP ${res.status}`);
-  const presentes = new Set(), banidas = new Map();
+  const presentes = new Set(), banidas = new Map(), ranking = [];
   for await (const l of linhasDe(Readable.fromWeb(res.body).pipe(zlib.createGunzip()))) {
     if (!l) continue;
     const m = /^\{"id":(\d+)/.exec(l);
     // cópia independente do id: o pedaço tirado da linha prende a linha inteira (até ~0,5 MB) na memória
     const id = m ? Buffer.from(m[1], "latin1").toString("latin1") : String(JSON.parse(l).id);
     presentes.add(id);
-    if (l.slice(-200).includes('"isBlacklisted":true')) banidas.set(id, detalhes(JSON.parse(l)));
+    const banida = l.slice(-200).includes('"isBlacklisted":true');
+    if (banida) banidas.set(id, detalhes(JSON.parse(l)));
+    if (CHAVE_TICKET && !banida && l.includes(CHAVE_TICKET)) {
+      const f = JSON.parse(l).farm || {};
+      const n = Number(f.farmActivity?.[`${TICKET} Collected`]) || 0;
+      if (n > 0) ranking.push([f.username || "", Number(id), n, Math.round(Number(f.bumpkin?.experience) || 0)]);
+    }
   }
-  return { presentes, banidas };
+  return { presentes, banidas, ranking };
+}
+
+// ranking completo: tickets coletados, desempate por XP (a ascensão não vem nos dados públicos)
+function gravarRanking(dia, ranking) {
+  if (!ranking.length) return;
+  ranking.sort((a, b) => b[2] - a[2] || b[3] - a[3]);
+  fs.mkdirSync(new URL("./ranking/", DADOS), { recursive: true });
+  gravarJson(new URL("./ranking/completo.json", DADOS), { dia, ticket: TICKET, lista: ranking });
+  console.log(`${dia}: ranking completo com ${ranking.length} jogadores (${TICKET})`);
 }
 
 async function main() {
@@ -104,7 +124,8 @@ async function main() {
     console.log(`${item.dia}: lendo ${item.arquivo} (${(item.size / 1e6).toFixed(0)} MB)...`);
     const lido = await lerArquivo(item.arquivo);
     if (!lido) { console.log(`${item.dia}: expirou no servidor — pulado.`); continue; }
-    const { presentes, banidas } = lido;
+    const { presentes, banidas, ranking } = lido;
+    gravarRanking(item.dia, ranking);
     const antBanidas = ant ? new Set(ant.banidas) : null, antPresentes = ant ? new Set(ant.presentes) : null;
     const lista = [];
     let novas = 0, jaBanidas = 0, desbanidas = 0;
