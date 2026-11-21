@@ -26,14 +26,14 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.publicar.outputs.page_url }}
+    # memória maior para ler o arquivo diário (o GitHub não aceita mais NODE_OPTIONS via $GITHUB_ENV)
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Memoria do Node
-        run: echo "NODE_OPTIONS=--max-old-space-size=6144" >> "$GITHUB_ENV"
-
       - name: Recuperar dados da rodada anterior
         uses: actions/cache/restore@v4
         with:
